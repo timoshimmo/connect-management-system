@@ -1,0 +1,9 @@
+export { DashboardPage } from './DashboardPage';
+export { LoginPage } from './LoginPage';
+export { MSPublishingPage } from './MSPublishingPage';
+export { ReadSitePage } from './ReadSitePage';
+export { ForgotPasswordPage } from './ForgotPasswordPage';
+export { ResetPasswordPage } from './ResetPasswordPage';
+export { DrawingRegisterLoginPage } from './DrawingRegisterLoginPage';
+export { DrawingRegisterPage } from './DrawingRegisterPage';
+export { CreateUserPage } from './CreateUserPage';
