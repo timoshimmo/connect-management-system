@@ -21,4 +21,4 @@ Thumbs.db
 .idea/
 
 # Local-only tool config
-.claude/settings.local.json
+.claude/
