@@ -36,10 +36,13 @@ export interface ApiDrawingRegisterUser {
   createdAt: string;
 }
 
+export type ApiEntityStatus = 'Active' | 'Inactive';
+
 export interface ApiDepartment {
   id: string;
   name: string;
   code: string;
+  status: ApiEntityStatus;
   publishedDocumentCount: number;
 }
 
@@ -47,6 +50,18 @@ export interface ApiDepartmentRef {
   _id: string;
   name: string;
   code: string;
+}
+
+/** Drawing Register-only — never hardcoded on the frontend, always fetched from the Discipline collection. */
+export interface ApiDiscipline {
+  id: string;
+  name: string;
+  status: ApiEntityStatus;
+}
+
+export interface ApiDisciplineRef {
+  _id: string;
+  name: string;
 }
 
 export interface ApiVersion {
@@ -80,7 +95,8 @@ export interface ApiDocument {
   docId: string;
   title: string;
   department: ApiDepartmentRef | string;
-  type: ApiDocumentType;
+  /** Only required for Read Site documents — Drawing Register documents don't set this. */
+  type: ApiDocumentType | null;
   status: ApiDocumentStatus;
   currentVersion: ApiVersion | null;
   author: ApiUserRef | string;
@@ -89,6 +105,11 @@ export interface ApiDocument {
   description: string;
   location: ApiDocumentLocation;
   destination: ApiDocumentDestination;
+  /** Drawing Register-only metadata — empty/null for Read Site documents. */
+  drawingNumber: string;
+  discipline: ApiDisciplineRef | string | null;
+  area: string;
+  revision: string;
   notes: string;
   returned: boolean;
   publishedAt: string | null;
@@ -126,7 +147,7 @@ export interface Paginated<T> {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
-export function refName(ref: ApiUserRef | ApiDepartmentRef | string | null | undefined): string {
+export function refName(ref: { name: string } | string | null | undefined): string {
   if (!ref) return '—';
   return typeof ref === 'string' ? ref : ref.name;
 }

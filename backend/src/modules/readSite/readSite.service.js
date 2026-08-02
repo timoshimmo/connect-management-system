@@ -23,6 +23,7 @@ async function listPublishedDocuments({ department, type, search, skip = 0, limi
       .skip(skip)
       .limit(limit)
       .populate('department', 'name code')
+      .populate('discipline', 'name')
       .populate('approver', 'name')
       .populate('currentVersion'),
     Document.countDocuments(filter),
@@ -31,7 +32,9 @@ async function listPublishedDocuments({ department, type, search, skip = 0, limi
 }
 
 async function listDepartmentsWithCounts(destination = 'Read Site') {
-  const departments = await Department.find().sort({ name: 1 });
+  // Only Active departments — deactivating one removes it from browsing here,
+  // matching Department Management's activate/deactivate semantics.
+  const departments = await Department.find({ status: 'Active' }).sort({ name: 1 });
   const counts = await Document.aggregate([
     { $match: { status: 'Published', destination } },
     { $group: { _id: '$department', count: { $sum: 1 } } },

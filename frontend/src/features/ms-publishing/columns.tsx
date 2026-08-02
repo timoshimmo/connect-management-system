@@ -32,7 +32,10 @@ export const departmentColumn: DocumentColumn = {
 export const typeColumn: DocumentColumn = {
   key: 'type',
   header: 'Type',
-  render: (doc) => <span className="text-sm text-gray-700">{doc.type}</span>,
+  // Read Site documents have a Type; Drawing Register documents don't (they
+  // have a Drawing Number instead) — this column is shared across both since
+  // MS Publishing's workflow tables list documents from either destination.
+  render: (doc) => <span className="text-sm text-gray-700">{doc.type ?? doc.drawingNumber ?? '—'}</span>,
 };
 
 export const authorColumn: DocumentColumn = {

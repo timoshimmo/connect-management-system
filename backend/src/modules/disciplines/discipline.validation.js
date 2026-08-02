@@ -1,15 +1,13 @@
 const { z } = require('zod');
-const { STATUSES } = require('./department.model');
+const { STATUSES } = require('./discipline.model');
 
-const createDepartmentSchema = z.object({
+const createDisciplineSchema = z.object({
   name: z.string().min(1),
-  code: z.string().min(1).max(10),
   status: z.enum(STATUSES).optional(),
 });
 
-const updateDepartmentSchema = z.object({
+const updateDisciplineSchema = z.object({
   name: z.string().min(1).optional(),
-  code: z.string().min(1).max(10).optional(),
   status: z.enum(STATUSES).optional(),
 });
 
@@ -20,4 +18,4 @@ const listQuerySchema = z.object({
   limit: z.string().optional(),
 });
 
-module.exports = { createDepartmentSchema, updateDepartmentSchema, listQuerySchema };
+module.exports = { createDisciplineSchema, updateDisciplineSchema, listQuerySchema };

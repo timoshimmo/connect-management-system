@@ -1,11 +1,11 @@
 const asyncHandler = require('../../utils/asyncHandler');
-const departmentService = require('./department.service');
+const disciplineService = require('./discipline.service');
 const { parsePagination, paginatedResponse } = require('../../common/pagination');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 
 const list = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query);
-  const { items, total } = await departmentService.listDepartments({
+  const { items, total } = await disciplineService.listDisciplines({
     search: req.query.search,
     status: req.query.status,
     skip,
@@ -15,27 +15,27 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const department = await departmentService.createDepartment(req.body);
+  const discipline = await disciplineService.createDiscipline(req.body);
   await recordAudit({
     user: req.user.id,
     action: 'edit',
-    targetType: 'department',
-    targetId: department.id,
+    targetType: 'discipline',
+    targetId: discipline.id,
     metadata: { created: true },
   });
-  res.status(201).json({ department });
+  res.status(201).json({ discipline });
 });
 
 const update = asyncHandler(async (req, res) => {
-  const department = await departmentService.updateDepartment(req.params.id, req.body);
+  const discipline = await disciplineService.updateDiscipline(req.params.id, req.body);
   await recordAudit({
     user: req.user.id,
     action: 'edit',
-    targetType: 'department',
-    targetId: department.id,
+    targetType: 'discipline',
+    targetId: discipline.id,
     metadata: { updatedFields: Object.keys(req.body) },
   });
-  res.json({ department });
+  res.json({ discipline });
 });
 
 module.exports = { list, create, update };

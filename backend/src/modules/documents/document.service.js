@@ -69,6 +69,7 @@ async function listDocuments({ department, type, status, search, skip = 0, limit
       .skip(skip)
       .limit(limit)
       .populate('department', 'name code')
+      .populate('discipline', 'name')
       .populate('author reviewer approver archivedBy', 'name email role')
       .populate('currentVersion'),
     Document.countDocuments(filter),
@@ -79,13 +80,27 @@ async function listDocuments({ department, type, status, search, skip = 0, limit
 async function getDocumentById(id) {
   const doc = await Document.findById(id)
     .populate('department', 'name code')
+    .populate('discipline', 'name')
     .populate('author reviewer approver archivedBy', 'name email role')
     .populate('currentVersion');
   if (!doc) throw new NotFoundError('Document not found');
   return doc;
 }
 
-async function createDocument({ title, department, type, description, location, destination, authorId, file }) {
+async function createDocument({
+  title,
+  department,
+  type,
+  description,
+  location,
+  destination,
+  drawingNumber,
+  discipline,
+  area,
+  revision,
+  authorId,
+  file,
+}) {
   // Retries a couple of times on a docId collision (e.g. a concurrent create
   // landing on the same next-sequence number) rather than failing the whole
   // request outright.
@@ -97,10 +112,14 @@ async function createDocument({ title, department, type, description, location, 
         docId,
         title,
         department,
-        type,
+        type: type || null,
         description: description || '',
         location: location || 'Onshore',
         destination,
+        drawingNumber: drawingNumber || '',
+        discipline: discipline || null,
+        area: area || '',
+        revision: revision || '',
         author: authorId,
         status: 'Draft',
       });

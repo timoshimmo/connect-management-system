@@ -1,1 +1,5 @@
-export { useDrawingRegisterDocumentsQuery, useDrawingRegisterDepartmentsQuery } from './hooks';
+export {
+  useDrawingRegisterDocumentsQuery,
+  useDrawingRegisterDepartmentsQuery,
+  useDrawingRegisterContactMutation,
+} from './hooks';

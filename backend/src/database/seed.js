@@ -5,6 +5,7 @@ const env = require('../config/env');
 const { hashPassword } = require('../utils/password');
 const { User } = require('../modules/users/user.model');
 const { Department } = require('../modules/departments/department.model');
+const { Discipline } = require('../modules/disciplines/discipline.model');
 const { Document } = require('../modules/documents/document.model');
 const { RefreshToken } = require('../modules/auth/refreshToken.model');
 const { AuditLog } = require('../modules/auditLogs/auditLog.model');
@@ -22,6 +23,10 @@ const DEPARTMENTS = [
   { name: 'Operations & Maintenance', code: 'OPS' },
   { name: 'Supply Chain', code: 'SC' },
 ];
+
+// Drawing Register-only — populates the Discipline dropdown when creating a
+// Drawing Register document (never hardcoded on the frontend).
+const DISCIPLINES = ['Mechanical', 'Piping', 'Civil', 'Electrical', 'Instrumentation'];
 
 // Ported 1:1 from frontend/src/data/demoUsers.ts.
 const USERS = [
@@ -76,7 +81,7 @@ const DOCUMENTS = [
   { id: 'SC-2026-006', title: 'Supplier Onboarding Procedure', department: 'Supply Chain', type: 'Procedure', status: 'Pending Approval', author: 'M. Danladi', reviewer: 'D. Garba', approver: 'G. Bello', publishedDate: null, nextReviewDate: null, description: 'Due diligence and setup steps for new suppliers.', location: 'Onshore', notes: '' },
 
   { id: 'HR-2026-018', title: 'Recruitment & Selection Procedure', department: 'HR', type: 'Procedure', status: 'Pending Publishing', author: 'O. Yakubu', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: null, nextReviewDate: null, description: 'End-to-end hiring process from requisition to offer.', location: 'Onshore', notes: '' },
-  { id: 'HSE-2026-009', title: 'Permit to Work Standard', department: 'HSE', type: 'Standard', status: 'Pending Publishing', author: 'J. Adamu', reviewer: 'B. Usman', approver: 'G. Bello', publishedDate: null, nextReviewDate: null, description: 'Hot work, confined space and lifting permit requirements.', location: 'Both', notes: '', destination: 'Drawing Register' },
+  { id: 'HSE-2026-009', title: 'Permit to Work Standard', department: 'HSE', type: 'Standard', status: 'Pending Publishing', author: 'J. Adamu', reviewer: 'B. Usman', approver: 'G. Bello', publishedDate: null, nextReviewDate: null, description: 'Hot work, confined space and lifting permit requirements.', location: 'Both', notes: '', destination: 'Drawing Register', drawingNumber: 'DWG-HSE-009', discipline: 'Electrical', revision: 'Rev A' },
 
   { id: 'COM-2026-001', title: 'Compliance Code of Conduct 2026', department: 'Compliance', type: 'Policy', status: 'Published', author: 'K. Ibrahim', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: '2026-06-03', nextReviewDate: '2027-06-03', description: 'Standards of ethical conduct expected of all staff.', location: 'Both', notes: '' },
   { id: 'COM-2026-002', title: 'Anti-Bribery & Corruption Policy', department: 'Compliance', type: 'Policy', status: 'Published', author: 'K. Ibrahim', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: '2026-03-15', nextReviewDate: '2027-03-15', description: 'Prohibited conduct and gift/hospitality thresholds.', location: 'Both', notes: '' },
@@ -88,8 +93,8 @@ const DOCUMENTS = [
   { id: 'HSE-2026-002', title: 'Personal Protective Equipment Standard', department: 'HSE', type: 'Standard', status: 'Published', author: 'J. Adamu', reviewer: 'B. Usman', approver: 'G. Bello', publishedDate: '2026-02-01', nextReviewDate: '2027-02-01', description: 'Minimum PPE requirements by work area.', location: 'Both', notes: '' },
   { id: 'IT-2026-001', title: 'Data Protection & Privacy Policy', department: 'IT', type: 'Policy', status: 'Published', author: 'C. Okafor', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: '2026-05-20', nextReviewDate: '2027-05-20', description: 'Handling of personal and confidential data.', location: 'Onshore', notes: '' },
   { id: 'IT-2026-002', title: 'Acceptable Use of IT Assets', department: 'IT', type: 'Policy', status: 'Published', author: 'C. Okafor', reviewer: 'B. Usman', approver: 'G. Bello', publishedDate: '2026-01-05', nextReviewDate: '2027-01-05', description: 'Acceptable use rules for company laptops, email and network.', location: 'Onshore', notes: '' },
-  { id: 'OPS-2026-001', title: 'Mayo ABO Operating Procedures v5', department: 'Operations & Maintenance', type: 'Procedure', status: 'Published', author: 'R. Shehu', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: '2026-06-01', nextReviewDate: '2027-06-01', description: 'Standard operating procedures for offshore facility.', location: 'Offshore – Mayo ABO', notes: '', destination: 'Drawing Register' },
-  { id: 'OPS-2026-002', title: 'Preventive Maintenance Schedule', department: 'Operations & Maintenance', type: 'Standard', status: 'Published', author: 'R. Shehu', reviewer: 'D. Garba', approver: 'G. Bello', publishedDate: '2026-01-20', nextReviewDate: '2027-01-20', description: 'Preventive maintenance intervals by asset class.', location: 'Onshore', notes: '', destination: 'Drawing Register' },
+  { id: 'OPS-2026-001', title: 'Mayo ABO Operating Procedures v5', department: 'Operations & Maintenance', type: 'Procedure', status: 'Published', author: 'R. Shehu', reviewer: 'A. Musa', approver: 'F. Aliyu', publishedDate: '2026-06-01', nextReviewDate: '2027-06-01', description: 'Standard operating procedures for offshore facility.', location: 'Offshore – Mayo ABO', notes: '', destination: 'Drawing Register', drawingNumber: 'DWG-OPS-001', discipline: 'Mechanical', area: 'Mayo ABO', revision: 'Rev C' },
+  { id: 'OPS-2026-002', title: 'Preventive Maintenance Schedule', department: 'Operations & Maintenance', type: 'Standard', status: 'Published', author: 'R. Shehu', reviewer: 'D. Garba', approver: 'G. Bello', publishedDate: '2026-01-20', nextReviewDate: '2027-01-20', description: 'Preventive maintenance intervals by asset class.', location: 'Onshore', notes: '', destination: 'Drawing Register', drawingNumber: 'DWG-OPS-002', discipline: 'Mechanical', revision: 'Rev B' },
   { id: 'SC-2026-001', title: 'Contract Management Policy', department: 'Supply Chain', type: 'Policy', status: 'Published', author: 'M. Danladi', reviewer: 'B. Usman', approver: 'F. Aliyu', publishedDate: '2025-12-01', nextReviewDate: '2026-12-01', description: 'Contract award, variation and close-out process.', location: 'Onshore', notes: '' },
   { id: 'SC-2026-002', title: 'Inventory Management Procedure', department: 'Supply Chain', type: 'Procedure', status: 'Published', author: 'N. Abubakar', reviewer: 'D. Garba', approver: 'G. Bello', publishedDate: '2025-11-01', nextReviewDate: '2026-11-01', description: 'Stock counts, reorder points and write-off approval.', location: 'Both', notes: '' },
 
@@ -109,6 +114,7 @@ async function seed() {
   await Promise.all([
     User.deleteMany({}),
     Department.deleteMany({}),
+    Discipline.deleteMany({}),
     Document.deleteMany({}),
     RefreshToken.deleteMany({}),
     AuditLog.deleteMany({}),
@@ -121,6 +127,13 @@ async function seed() {
   for (const dept of DEPARTMENTS) {
     const created = await Department.create(dept);
     departmentByName.set(dept.name, created._id);
+  }
+
+  console.log('Seeding disciplines...');
+  const disciplineByName = new Map();
+  for (const name of DISCIPLINES) {
+    const created = await Discipline.create({ name });
+    disciplineByName.set(name, created._id);
   }
 
   console.log('Seeding users (all share the password "%s")...', DEMO_PASSWORD);
@@ -146,6 +159,10 @@ async function seed() {
       location: d.location,
       destination: d.destination || 'Read Site',
       notes: d.notes,
+      drawingNumber: d.drawingNumber || '',
+      discipline: d.discipline ? disciplineByName.get(d.discipline) : null,
+      area: d.area || '',
+      revision: d.revision || '',
       publishedAt: d.publishedDate ? new Date(d.publishedDate) : null,
       nextReviewDate: d.nextReviewDate ? new Date(d.nextReviewDate) : null,
     });
@@ -158,8 +175,9 @@ async function seed() {
   }
 
   console.log(
-    'Done. Seeded %d departments, %d users, %d documents, %d Drawing Register users.',
+    'Done. Seeded %d departments, %d disciplines, %d users, %d documents, %d Drawing Register users.',
     DEPARTMENTS.length,
+    DISCIPLINES.length,
     USERS.length,
     DOCUMENTS.length,
     DR_USERS.length

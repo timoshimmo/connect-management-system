@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { X, Paperclip, FileText } from 'lucide-react';
 import { useDepartmentsQuery } from '@/features/departments/hooks';
+import { useDisciplinesQuery } from '@/features/disciplines/hooks';
 import { refId } from '@/lib/apiTypes';
 import type { ApiDocument, ApiDocumentDestination, ApiDocumentType } from '@/lib/apiTypes';
 import type { UpdateDocumentPayload } from '@/features/documents/hooks';
@@ -21,19 +22,35 @@ interface EditDocumentModalProps {
  * attached file. Saving never creates a new document: metadata goes through
  * PATCH /documents/:id, and a replacement file goes through the same
  * POST /documents/:id/versions endpoint every other upload uses (a new
- * version, never an overwrite). See useUpdateDocumentMutation.
+ * version, never an overwrite). See useUpdateDocumentMutation. Field set
+ * adapts to Destination the same way NewDocumentModal does.
  */
 export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDocumentModalProps) {
   const { data: departments = [] } = useDepartmentsQuery();
+  const [destination, setDestination] = useState<ApiDocumentDestination>(doc.destination);
+  const isDrawingRegister = destination === 'Drawing Register';
+  const { data: disciplines = [] } = useDisciplinesQuery(isDrawingRegister);
+
   const [title, setTitle] = useState(doc.title);
   const [department, setDepartment] = useState(refId(doc.department) ?? '');
-  const [type, setType] = useState<ApiDocumentType>(doc.type);
-  const [destination, setDestination] = useState<ApiDocumentDestination>(doc.destination);
+  const [type, setType] = useState<ApiDocumentType | ''>(doc.type ?? '');
   const [description, setDescription] = useState(doc.description ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [changeNote, setChangeNote] = useState('');
 
-  const canSubmit = title.trim() && department && type && destination;
+  const [drawingNumber, setDrawingNumber] = useState(doc.drawingNumber ?? '');
+  const [discipline, setDiscipline] = useState(refId(doc.discipline) ?? '');
+  const [area, setArea] = useState(doc.area ?? '');
+  const [revision, setRevision] = useState(doc.revision ?? '');
+
+  const canSubmit = Boolean(
+    title.trim() &&
+      department &&
+      destination &&
+      (isDrawingRegister
+        ? drawingNumber.trim() && discipline && revision.trim()
+        : type)
+  );
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -41,11 +58,13 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
     onSave({
       title: title.trim(),
       department,
-      type,
       destination,
       description: description.trim(),
       file,
       changeNote: changeNote.trim() || undefined,
+      ...(isDrawingRegister
+        ? { drawingNumber: drawingNumber.trim(), discipline, area: area.trim(), revision: revision.trim() }
+        : { type: type as ApiDocumentType }),
     });
   }
 
@@ -71,7 +90,24 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
 
         <form onSubmit={handleSubmit} className="space-y-4 p-5">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Document Title *</label>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">Document Destination *</label>
+            <select
+              value={destination}
+              onChange={(e) => setDestination(e.target.value as ApiDocumentDestination)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+            >
+              {DOCUMENT_DESTINATIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">
+              {isDrawingRegister ? 'Drawing Title *' : 'Document Title *'}
+            </label>
             <input
               type="text"
               value={title}
@@ -96,36 +132,74 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
                 ))}
               </select>
             </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Document Type *</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as ApiDocumentType)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
-              >
-                {DOCUMENT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isDrawingRegister ? (
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Discipline *</label>
+                <select
+                  value={discipline}
+                  onChange={(e) => setDiscipline(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                >
+                  <option value="">Select...</option>
+                  {disciplines.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Document Type *</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as ApiDocumentType)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                >
+                  <option value="">Select...</option>
+                  {DOCUMENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Document Destination *</label>
-            <select
-              value={destination}
-              onChange={(e) => setDestination(e.target.value as ApiDocumentDestination)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
-            >
-              {DOCUMENT_DESTINATIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
+          {isDrawingRegister && (
+            <>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-semibold text-gray-600">Drawing Number *</label>
+                  <input
+                    type="text"
+                    value={drawingNumber}
+                    onChange={(e) => setDrawingNumber(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-semibold text-gray-600">Revision *</label>
+                  <input
+                    type="text"
+                    value={revision}
+                    onChange={(e) => setRevision(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Area (optional)</label>
+                <input
+                  type="text"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-gray-600">Description</label>

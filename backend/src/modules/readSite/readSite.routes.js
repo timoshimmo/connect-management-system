@@ -1,5 +1,7 @@
 const express = require('express');
 const controller = require('./readSite.controller');
+const { validate } = require('../../middlewares/validate');
+const { createContactMessageSchema } = require('../contactMessages/contactMessage.validation');
 
 const router = express.Router();
 
@@ -73,5 +75,23 @@ router.get('/departments', controller.listDepartments);
  *             example: { totalDocuments: 34, pendingApproval: 3, publishedThisMonth: 11, dueForReview: 3 }
  */
 router.get('/stats', controller.stats);
+
+/**
+ * @openapi
+ * /read-site/contact:
+ *   post:
+ *     tags: [Read Site]
+ *     summary: Public — "Contact Document Controller" submission from the Read Site (no auth required)
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           example: { subject: "Missing revision", message: "The PDF for HSE-2026-001 seems outdated.", department: "64f...", relatedDocument: "64f..." }
+ *     responses:
+ *       201:
+ *         content:
+ *           application/json:
+ *             example: { id: "64f..." }
+ */
+router.post('/contact', validate({ body: createContactMessageSchema }), controller.contact);
 
 module.exports = router;

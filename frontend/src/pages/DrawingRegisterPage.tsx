@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { DrawingRegisterProtectedLayout } from '@/components/layout';
 import PageHeader from '@/components/ReadSite/PageHeader';
@@ -7,10 +7,16 @@ import DepartmentGrid from '@/components/ReadSite/DepartmentGrid';
 import DocumentTabs from '@/components/ReadSite/DocumentTabs';
 import DocumentList from '@/components/ReadSite/DocumentList';
 import FooterNotice from '@/components/ReadSite/FooterNotice';
-import { departments as departmentIcons } from '@/data/departments';
+import { ContactControllerModal } from '@/components/ReadSite/ContactControllerModal';
+import { DEPARTMENT_ICON_BY_NAME } from '@/data/departments';
+import { defaultDepartmentIcon } from '@/components/ReadSite/departmentIconMap';
 import { useDocumentFilters } from '@/hooks/useDocumentFilters';
 import { useAppSelector } from '@/hooks';
-import { useDrawingRegisterDocumentsQuery, useDrawingRegisterDepartmentsQuery } from '@/features/drawing-register';
+import {
+  useDrawingRegisterDocumentsQuery,
+  useDrawingRegisterDepartmentsQuery,
+  useDrawingRegisterContactMutation,
+} from '@/features/drawing-register';
 import { refName } from '@/lib/apiTypes';
 
 function fileTypeFromFormat(format: string | undefined): string {
@@ -63,12 +69,15 @@ function DrawingRegisterContent() {
     [publishedDocs]
   );
 
+  // Live departments are the source of truth — see ReadSitePage.tsx for why.
   const departments = useMemo(
     () =>
-      departmentIcons.map((iconMeta) => {
-        const apiDept = apiDepartments.find((d) => d.name === iconMeta.name);
-        return { ...iconMeta, documentCount: apiDept?.publishedDocumentCount ?? 0 };
-      }),
+      apiDepartments.map((d) => ({
+        id: slugify(d.name),
+        name: d.name,
+        documentCount: d.publishedDocumentCount,
+        icon: (DEPARTMENT_ICON_BY_NAME as Record<string, string>)[d.name] ?? defaultDepartmentIcon,
+      })),
     [apiDepartments]
   );
 
@@ -93,9 +102,9 @@ function DrawingRegisterContent() {
     setDepartment(slugify(dept.name));
   };
 
-  const handleContactController = () => {
-    window.location.href = '/ms-publishing/contact';
-  };
+  const [contactOpen, setContactOpen] = useState(false);
+  const contactMutation = useDrawingRegisterContactMutation();
+  const preselectedDepartmentId = apiDepartments.find((d) => slugify(d.name) === department)?.id;
 
   return (
     <main aria-label="STAC Drawing Register">
@@ -124,7 +133,7 @@ function DrawingRegisterContent() {
       <DepartmentGrid
         departments={departments}
         onSelectDepartment={handleSelectDepartment}
-        onContactController={handleContactController}
+        onContactController={() => setContactOpen(true)}
         showDrawingRegisterLink={false}
       />
 
@@ -159,6 +168,17 @@ function DrawingRegisterContent() {
           suffix="or contact your department's document controller."
         />
       </div>
+
+      {contactOpen && (
+        <ContactControllerModal
+          departments={apiDepartments}
+          documents={publishedDocs.map((d) => ({ id: d._id, title: d.title }))}
+          preselectedDepartmentId={preselectedDepartmentId}
+          onClose={() => setContactOpen(false)}
+          isSubmitting={contactMutation.isPending}
+          onSubmit={(payload) => contactMutation.mutate(payload, { onSuccess: () => setContactOpen(false) })}
+        />
+      )}
     </main>
   );
 }

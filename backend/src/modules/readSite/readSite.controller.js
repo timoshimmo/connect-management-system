@@ -1,5 +1,6 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const readSiteService = require('./readSite.service');
+const contactMessageService = require('../contactMessages/contactMessage.service');
 const { parsePagination, paginatedResponse } = require('../../common/pagination');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 
@@ -34,4 +35,12 @@ const stats = asyncHandler(async (req, res) => {
   res.json(data);
 });
 
-module.exports = { listDocuments, listDepartments, documentFile, stats };
+const contact = asyncHandler(async (req, res) => {
+  const message = await contactMessageService.createMessage({
+    ...req.body,
+    source: 'read-site',
+  });
+  res.status(201).json({ id: message._id.toString() });
+});
+
+module.exports = { listDocuments, listDepartments, documentFile, stats, contact };

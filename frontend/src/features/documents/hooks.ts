@@ -53,19 +53,29 @@ export function useCreateDocumentMutation() {
     mutationFn: (payload: {
       title: string;
       department: string;
-      type: ApiDocumentType;
       destination: ApiDocumentDestination;
+      /** Read Site only. */
+      type?: ApiDocumentType;
       description?: string;
       location?: string;
+      /** Drawing Register only. */
+      drawingNumber?: string;
+      discipline?: string;
+      area?: string;
+      revision?: string;
       file?: File | null;
     }) => {
       const form = new FormData();
       form.set('title', payload.title);
       form.set('department', payload.department);
-      form.set('type', payload.type);
       form.set('destination', payload.destination);
+      if (payload.type) form.set('type', payload.type);
       if (payload.description) form.set('description', payload.description);
       if (payload.location) form.set('location', payload.location);
+      if (payload.drawingNumber) form.set('drawingNumber', payload.drawingNumber);
+      if (payload.discipline) form.set('discipline', payload.discipline);
+      if (payload.area) form.set('area', payload.area);
+      if (payload.revision) form.set('revision', payload.revision);
       if (payload.file) form.set('file', payload.file);
       return apiUpload<{ document: ApiDocument }>('/documents', form).then((r) => r.document);
     },
@@ -85,6 +95,10 @@ export interface UpdateDocumentPayload {
   description?: string;
   location?: string;
   destination?: ApiDocumentDestination;
+  drawingNumber?: string;
+  discipline?: string;
+  area?: string;
+  revision?: string;
   /** Only sent alongside `file` — a note on the replacement version, never part of the document's own fields. */
   changeNote?: string;
   file?: File | null;

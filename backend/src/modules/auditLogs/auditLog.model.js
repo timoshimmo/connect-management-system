@@ -20,7 +20,11 @@ const auditLogSchema = new mongoose.Schema(
     // logged-in user, since anonymous staff can browse published documents.
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     action: { type: String, enum: AUDIT_ACTIONS, required: true },
-    targetType: { type: String, enum: ['document', 'user', 'drawingRegisterUser', 'auth'], required: true },
+    targetType: {
+      type: String,
+      enum: ['document', 'user', 'drawingRegisterUser', 'auth', 'department', 'discipline', 'contactMessage'],
+      required: true,
+    },
     targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   },

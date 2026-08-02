@@ -24,6 +24,8 @@ import {
 } from '@/features/documents/hooks';
 import { isDocumentOverdue, isPublishedThisMonth } from '@/features/documents/utils';
 import { UserManagementPanel } from '@/features/users';
+import { DepartmentManagementPanel } from '@/features/departments/DepartmentManagementPanel';
+import { DisciplineManagementPanel } from '@/features/disciplines/DisciplineManagementPanel';
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
 import { ROLES, ViewKey, CountKey } from '@/data/roles';
@@ -628,6 +630,18 @@ function MSPublishingContent() {
     content = (
       <RoleGuard allow={['controller']} role={user.role}>
         <UserManagementPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'departments') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <DepartmentManagementPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'disciplines') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <DisciplineManagementPanel />
       </RoleGuard>
     );
   } else if (view === 'dept' && activeDept) {

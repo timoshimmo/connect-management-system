@@ -1,5 +1,6 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const readSiteService = require('../readSite/readSite.service');
+const contactMessageService = require('../contactMessages/contactMessage.service');
 const { parsePagination, paginatedResponse } = require('../../common/pagination');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 
@@ -35,4 +36,13 @@ const documentFile = asyncHandler(async (req, res) => {
   res.json({ url: version.file.url, format: version.file.format });
 });
 
-module.exports = { listDocuments, listDepartments, documentFile };
+const contact = asyncHandler(async (req, res) => {
+  const message = await contactMessageService.createMessage({
+    ...req.body,
+    source: 'drawing-register',
+    drawingRegisterUserId: req.drawingRegisterUser.id,
+  });
+  res.status(201).json({ id: message._id.toString() });
+});
+
+module.exports = { listDocuments, listDepartments, documentFile, contact };

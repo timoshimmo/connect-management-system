@@ -21,10 +21,19 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
   const { openPreview } = useDocumentPreview();
   const currentVersion = doc.currentVersion;
 
+  const isDrawingRegister = doc.destination === 'Drawing Register';
+
   const meta: [string, string][] = [
     ['Doc ID', doc.docId],
     ['Department', refName(doc.department)],
-    ['Type', doc.type],
+    ...(isDrawingRegister
+      ? ([
+          ['Drawing Number', doc.drawingNumber || '—'],
+          ['Discipline', refName(doc.discipline)],
+          ['Revision', doc.revision || '—'],
+          ...(doc.area ? [['Area', doc.area]] : []),
+        ] as [string, string][])
+      : ([['Type', doc.type ?? '—']] as [string, string][])),
     ['Destination', doc.destination],
     ['Version', currentVersion?.versionNumber ?? '—'],
     ['Location', doc.location],

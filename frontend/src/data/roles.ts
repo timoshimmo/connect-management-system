@@ -10,6 +10,7 @@ import {
   Archive,
   Users,
   Building2,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 import { DEPARTMENTS, Department } from './seedDocuments';
@@ -28,7 +29,9 @@ export type ViewKey =
   | 'publishing'
   | 'dept'
   | 'archive'
-  | 'authors';
+  | 'authors'
+  | 'departments'
+  | 'disciplines';
 
 export type CountKey =
   | 'drafts'
@@ -145,6 +148,8 @@ export const ROLES: Record<ApiRole, RoleConfig> = {
       { label: 'Admin', divider: 'Admin' },
       { label: 'Archive', view: 'archive', icon: Archive },
       { label: 'User Management', view: 'authors', icon: Users },
+      { label: 'Department Management', view: 'departments', icon: Building2 },
+      { label: 'Discipline Management', view: 'disciplines', icon: Layers },
     ],
   },
 };

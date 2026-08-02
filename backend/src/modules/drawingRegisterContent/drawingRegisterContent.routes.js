@@ -1,6 +1,8 @@
 const express = require('express');
 const controller = require('./drawingRegisterContent.controller');
 const { authenticateDrawingRegister } = require('../../middlewares/drawingRegisterAuth');
+const { validate } = require('../../middlewares/validate');
+const { createContactMessageSchema } = require('../contactMessages/contactMessage.validation');
 
 const router = express.Router();
 
@@ -56,5 +58,24 @@ router.get('/documents/:id/file', controller.documentFile);
  *       200: { description: Department list with counts }
  */
 router.get('/departments', controller.listDepartments);
+
+/**
+ * @openapi
+ * /drawing-register/contact:
+ *   post:
+ *     tags: [Drawing Register]
+ *     summary: "Contact Document Controller" submission from the Drawing Register (requires Drawing Register login)
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           example: { subject: "Missing revision", message: "The PDF for DR-2026-001 seems outdated.", department: "64f...", relatedDocument: "64f..." }
+ *     responses:
+ *       201:
+ *         content:
+ *           application/json:
+ *             example: { id: "64f..." }
+ */
+router.post('/contact', validate({ body: createContactMessageSchema }), controller.contact);
 
 module.exports = router;
