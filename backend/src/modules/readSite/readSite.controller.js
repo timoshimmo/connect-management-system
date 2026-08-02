@@ -29,4 +29,9 @@ const documentFile = asyncHandler(async (req, res) => {
   res.json({ url: version.file.url, format: version.file.format });
 });
 
-module.exports = { listDocuments, listDepartments, documentFile };
+const stats = asyncHandler(async (req, res) => {
+  const data = await readSiteService.getPublicStats();
+  res.json(data);
+});
+
+module.exports = { listDocuments, listDepartments, documentFile, stats };

@@ -54,4 +54,23 @@ async function getPublicDocumentFile(id, destination = 'Read Site') {
   return doc.currentVersion;
 }
 
-module.exports = { listPublishedDocuments, listDepartmentsWithCounts, getPublicDocumentFile };
+/**
+ * Org-wide aggregate counts for the public Dashboard hero (no per-document
+ * detail, just totals) — safe to expose without authentication, unlike the
+ * full document lists MS Publishing's own /dashboard/summary returns.
+ */
+async function getPublicStats() {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [totalDocuments, pendingApproval, publishedThisMonth, dueForReview] = await Promise.all([
+    Document.countDocuments({}),
+    Document.countDocuments({ status: 'Pending Approval' }),
+    Document.countDocuments({ status: 'Published', publishedAt: { $gte: startOfMonth } }),
+    Document.countDocuments({ status: 'Published', nextReviewDate: { $lte: now } }),
+  ]);
+
+  return { totalDocuments, pendingApproval, publishedThisMonth, dueForReview };
+}
+
+module.exports = { listPublishedDocuments, listDepartmentsWithCounts, getPublicDocumentFile, getPublicStats };

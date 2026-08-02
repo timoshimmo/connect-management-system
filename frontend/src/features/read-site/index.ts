@@ -1,1 +1,2 @@
-export { useReadSitePublishedDocumentsQuery, useReadSiteDepartmentsQuery } from './hooks';
+export { useReadSitePublishedDocumentsQuery, useReadSiteDepartmentsQuery, useReadSiteStatsQuery } from './hooks';
+export type { ReadSiteStats } from './hooks';

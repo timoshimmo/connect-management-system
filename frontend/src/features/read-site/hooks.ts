@@ -17,3 +17,18 @@ export function useReadSiteDepartmentsQuery() {
     queryFn: () => apiRequest<{ items: ApiDepartment[] }>('/read-site/departments').then((r) => r.items),
   });
 }
+
+export interface ReadSiteStats {
+  totalDocuments: number;
+  pendingApproval: number;
+  publishedThisMonth: number;
+  dueForReview: number;
+}
+
+/** Public — org-wide aggregate counts for the Dashboard hero. */
+export function useReadSiteStatsQuery() {
+  return useQuery({
+    queryKey: ['read-site', 'stats'],
+    queryFn: () => apiRequest<ReadSiteStats>('/read-site/stats'),
+  });
+}

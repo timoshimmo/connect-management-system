@@ -5,15 +5,18 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { MetricCard } from '@/components/ui';
-
-const metrics = [
-  { label: 'Total Documents', value: 142, icon: FileText },
-  { label: 'Pending Approval', value: 7, icon: Clock },
-  { label: 'Published This Month', value: 11, icon: CheckCircle2 },
-  { label: 'Due for Review', value: 4, icon: AlertCircle },
-];
+import { useReadSiteStatsQuery } from '@/features/read-site';
 
 export function HeroSection() {
+  const { data: stats, isLoading } = useReadSiteStatsQuery();
+
+  const metrics = [
+    { label: 'Total Documents', value: stats?.totalDocuments, icon: FileText },
+    { label: 'Pending Approval', value: stats?.pendingApproval, icon: Clock },
+    { label: 'Published This Month', value: stats?.publishedThisMonth, icon: CheckCircle2 },
+    { label: 'Due for Review', value: stats?.dueForReview, icon: AlertCircle },
+  ];
+
   return (
     <section className="bg-brand-900">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
@@ -32,7 +35,7 @@ export function HeroSection() {
             <MetricCard
               key={metric.label}
               label={metric.label}
-              value={metric.value}
+              value={isLoading || metric.value === undefined ? '—' : metric.value}
               icon={metric.icon}
             />
           ))}

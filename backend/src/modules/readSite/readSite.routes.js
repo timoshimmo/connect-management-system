@@ -60,4 +60,18 @@ router.get('/documents/:id/file', controller.documentFile);
  */
 router.get('/departments', controller.listDepartments);
 
+/**
+ * @openapi
+ * /read-site/stats:
+ *   get:
+ *     tags: [Read Site]
+ *     summary: Public — org-wide document counts for the Dashboard hero (no per-document detail)
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             example: { totalDocuments: 34, pendingApproval: 3, publishedThisMonth: 11, dueForReview: 3 }
+ */
+router.get('/stats', controller.stats);
+
 module.exports = router;
