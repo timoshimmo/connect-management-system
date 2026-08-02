@@ -1,6 +1,13 @@
 import { getAccessToken, setAccessToken } from './tokenStore';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
+/**
+ * In dev, the Vite server and the API run on different ports, so an absolute
+ * localhost URL is needed. In a production build (Vercel), the frontend and
+ * backend are deployed as same-origin services under one domain (see
+ * /vercel.json's rewrites), so a relative path is both correct and avoids
+ * ever having to hardcode or configure a production API origin.
+ */
+const BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
 export class ApiError extends Error {
   status: number;
