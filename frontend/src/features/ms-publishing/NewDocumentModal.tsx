@@ -2,10 +2,11 @@ import { FormEvent, useState } from 'react';
 import { X, Paperclip } from 'lucide-react';
 import { useDepartmentsQuery } from '@/features/departments/hooks';
 import { useDisciplinesQuery } from '@/features/disciplines/hooks';
-import type { ApiDocumentDestination, ApiDocumentType } from '@/lib/apiTypes';
+import type { ApiDocumentDestination, ApiDocumentLocation, ApiDocumentType } from '@/lib/apiTypes';
 
 const DOCUMENT_TYPES: ApiDocumentType[] = ['Policy', 'Procedure', 'Standard', 'Work Instruction', 'Form'];
 const DOCUMENT_DESTINATIONS: ApiDocumentDestination[] = ['Read Site', 'Drawing Register'];
+const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
 interface NewDocumentModalProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ interface NewDocumentModalProps {
     destination: ApiDocumentDestination;
     type?: ApiDocumentType;
     description: string;
+    location: ApiDocumentLocation;
     drawingNumber?: string;
     discipline?: string;
     area?: string;
@@ -42,6 +44,7 @@ export function NewDocumentModal({ onClose, onCreate, isSubmitting }: NewDocumen
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('');
   const [type, setType] = useState<ApiDocumentType | ''>('');
+  const [location, setLocation] = useState<ApiDocumentLocation>('Onshore');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
@@ -68,6 +71,7 @@ export function NewDocumentModal({ onClose, onCreate, isSubmitting }: NewDocumen
       department,
       destination,
       description: description.trim(),
+      location,
       file,
       ...(isDrawingRegister
         ? { drawingNumber: drawingNumber.trim(), discipline, area: area.trim(), revision: revision.trim() }
@@ -215,6 +219,25 @@ export function NewDocumentModal({ onClose, onCreate, isSubmitting }: NewDocumen
                   </div>
                 </>
               )}
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-gray-600">Location</label>
+                <select
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value as ApiDocumentLocation)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                >
+                  {DOCUMENT_LOCATIONS.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Which site(s) this applies to — drives the Onshore/Offshore tabs on the Read Site and Drawing
+                  Register.
+                </p>
+              </div>
 
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600">Description</label>

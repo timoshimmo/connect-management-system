@@ -49,7 +49,9 @@ export function useDocumentFilters(
 
     const tabType = TAB_TYPE_MAP[activeTab];
     if (tabType) {
-      result = result.filter((doc) => doc.type === tabType);
+      // A document whose location is "Both" belongs on both the Onshore and
+      // Offshore tabs, not neither — plain equality would silently exclude it.
+      result = result.filter((doc) => doc.type === tabType || doc.type === 'Both');
     }
 
     if (department !== "all") {

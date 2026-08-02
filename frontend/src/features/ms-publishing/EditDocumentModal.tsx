@@ -3,11 +3,12 @@ import { X, Paperclip, FileText } from 'lucide-react';
 import { useDepartmentsQuery } from '@/features/departments/hooks';
 import { useDisciplinesQuery } from '@/features/disciplines/hooks';
 import { refId } from '@/lib/apiTypes';
-import type { ApiDocument, ApiDocumentDestination, ApiDocumentType } from '@/lib/apiTypes';
+import type { ApiDocument, ApiDocumentDestination, ApiDocumentLocation, ApiDocumentType } from '@/lib/apiTypes';
 import type { UpdateDocumentPayload } from '@/features/documents/hooks';
 
 const DOCUMENT_TYPES: ApiDocumentType[] = ['Policy', 'Procedure', 'Standard', 'Work Instruction', 'Form'];
 const DOCUMENT_DESTINATIONS: ApiDocumentDestination[] = ['Read Site', 'Drawing Register'];
+const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
 interface EditDocumentModalProps {
   doc: ApiDocument;
@@ -34,6 +35,7 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
   const [title, setTitle] = useState(doc.title);
   const [department, setDepartment] = useState(refId(doc.department) ?? '');
   const [type, setType] = useState<ApiDocumentType | ''>(doc.type ?? '');
+  const [location, setLocation] = useState<ApiDocumentLocation>(doc.location ?? 'Onshore');
   const [description, setDescription] = useState(doc.description ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [changeNote, setChangeNote] = useState('');
@@ -60,6 +62,7 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
       department,
       destination,
       description: description.trim(),
+      location,
       file,
       changeNote: changeNote.trim() || undefined,
       ...(isDrawingRegister
@@ -200,6 +203,21 @@ export function EditDocumentModal({ doc, onClose, onSave, isSubmitting }: EditDo
               </div>
             </>
           )}
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">Location</label>
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value as ApiDocumentLocation)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+            >
+              {DOCUMENT_LOCATIONS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-gray-600">Description</label>
