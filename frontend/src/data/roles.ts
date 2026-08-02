@@ -13,7 +13,6 @@ import {
   Layers,
   type LucideIcon,
 } from 'lucide-react';
-import { DEPARTMENTS, Department } from './seedDocuments';
 import type { ApiRole } from '@/lib/apiTypes';
 
 export type ViewKey =
@@ -28,6 +27,7 @@ export type ViewKey =
   | 'assignment'
   | 'publishing'
   | 'dept'
+  | 'discipline'
   | 'archive'
   | 'authors'
   | 'departments'
@@ -46,12 +46,19 @@ export type CountKey =
 export interface SidebarItem {
   label: string;
   view?: ViewKey;
-  dept?: Department;
+  /** Filter value for 'dept'/'discipline' views — a department or discipline name. */
+  filterValue?: string;
   icon?: LucideIcon;
   countKey?: CountKey;
   chipType?: 'warn' | 'danger';
   /** When set, this entry renders as a section divider instead of a nav link. */
   divider?: string;
+  /**
+   * When set, MSPublishingSidebar expands this single entry into one button
+   * per live department/discipline (fetched from the API, not hardcoded) —
+   * see MSPublishingSidebar.tsx.
+   */
+  dynamicSource?: 'departments' | 'disciplines';
 }
 
 export interface RoleConfig {
@@ -139,12 +146,9 @@ export const ROLES: Record<ApiRole, RoleConfig> = {
       { label: 'Due for Review', view: 'due', icon: AlertTriangle, countKey: 'due', chipType: 'danger' },
       { label: 'Recently Published', view: 'recent', icon: CheckCircle2 },
       { label: 'By Department', divider: 'By Department' },
-      ...DEPARTMENTS.map((dept) => ({
-        label: dept,
-        view: 'dept' as ViewKey,
-        dept,
-        icon: Building2,
-      })),
+      { label: 'By Department', view: 'dept', icon: Building2, dynamicSource: 'departments' },
+      { label: 'By Discipline', divider: 'By Discipline' },
+      { label: 'By Discipline', view: 'discipline', icon: Layers, dynamicSource: 'disciplines' },
       { label: 'Admin', divider: 'Admin' },
       { label: 'Archive', view: 'archive', icon: Archive },
       { label: 'User Management', view: 'authors', icon: Users },

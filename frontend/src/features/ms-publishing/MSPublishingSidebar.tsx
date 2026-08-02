@@ -1,21 +1,40 @@
-import { RoleConfig, ViewKey, CountKey } from '@/data/roles';
-import { Department } from '@/data/seedDocuments';
+import { RoleConfig, ViewKey, CountKey, SidebarItem } from '@/data/roles';
+import { useDepartmentsQuery } from '@/features/departments/hooks';
+import { useDisciplinesQuery } from '@/features/disciplines/hooks';
 
 interface MSPublishingSidebarProps {
   role: RoleConfig;
   activeView: ViewKey;
-  activeDept?: Department;
+  activeFilter?: string;
   counts: Partial<Record<CountKey, number>>;
-  onNavigate: (view: ViewKey, dept?: Department) => void;
+  onNavigate: (view: ViewKey, filterValue?: string) => void;
 }
 
 export function MSPublishingSidebar({
   role,
   activeView,
-  activeDept,
+  activeFilter,
   counts,
   onNavigate,
 }: MSPublishingSidebarProps) {
+  // Fetched unconditionally (never inside a loop) — enabled only when this
+  // role's sidebar actually has a matching `dynamicSource` marker (see
+  // roles.ts) so other roles don't fire an unnecessary request.
+  const needsDepartments = role.sidebar.some((item) => item.dynamicSource === 'departments');
+  const needsDisciplines = role.sidebar.some((item) => item.dynamicSource === 'disciplines');
+  const { data: departments = [] } = useDepartmentsQuery(needsDepartments);
+  const { data: disciplines = [] } = useDisciplinesQuery(needsDisciplines);
+
+  const expanded: SidebarItem[] = role.sidebar.flatMap((item) => {
+    if (item.dynamicSource === 'departments') {
+      return departments.map((d) => ({ ...item, label: d.name, filterValue: d.name }));
+    }
+    if (item.dynamicSource === 'disciplines') {
+      return disciplines.map((d) => ({ ...item, label: d.name, filterValue: d.name }));
+    }
+    return [item];
+  });
+
   return (
     <aside className="w-full shrink-0 lg:w-60">
       <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3.5 shadow-card">
@@ -25,7 +44,7 @@ export function MSPublishingSidebar({
       </div>
 
       <nav className="rounded-xl border border-gray-200 bg-white p-2 shadow-card">
-        {role.sidebar.map((item, i) => {
+        {expanded.map((item, i) => {
           if (item.divider) {
             return (
               <div
@@ -37,13 +56,15 @@ export function MSPublishingSidebar({
             );
           }
           const Icon = item.icon;
-          const isActive = item.view === activeView && (item.dept ? item.dept === activeDept : !activeDept || activeView !== 'dept');
+          const isActive =
+            item.view === activeView &&
+            (item.filterValue ? item.filterValue === activeFilter : !activeFilter || (activeView !== 'dept' && activeView !== 'discipline'));
           const count = item.countKey ? counts[item.countKey] : undefined;
           return (
             <button
-              key={`${item.view}-${item.dept ?? i}`}
+              key={`${item.view}-${item.filterValue ?? i}`}
               type="button"
-              onClick={() => onNavigate(item.view!, item.dept)}
+              onClick={() => onNavigate(item.view!, item.filterValue)}
               className={`mb-0.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors ${
                 isActive ? 'bg-brand-50 text-brand-800' : 'text-gray-700 hover:bg-gray-50'
               }`}

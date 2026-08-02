@@ -29,7 +29,6 @@ import { DisciplineManagementPanel } from '@/features/disciplines/DisciplineMana
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
 import { ROLES, ViewKey, CountKey } from '@/data/roles';
-import { Department } from '@/data/seedDocuments';
 import {
   MSPublishingSidebar,
   WorkflowBar,
@@ -100,7 +99,7 @@ function MSPublishingContent() {
   const restoreDocument = useRestoreMutation();
 
   const [view, setView] = useState<ViewKey>('dashboard');
-  const [activeDept, setActiveDept] = useState<Department | undefined>();
+  const [activeFilter, setActiveFilter] = useState<string | undefined>();
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<ApiDocument | null>(null);
   const [editDoc, setEditDoc] = useState<ApiDocument | null>(null);
@@ -131,9 +130,9 @@ function MSPublishingContent() {
     return [];
   }, [allDocuments, user]);
 
-  function handleNavigate(nextView: ViewKey, dept?: Department) {
+  function handleNavigate(nextView: ViewKey, filterValue?: string) {
     setView(nextView);
-    setActiveDept(dept);
+    setActiveFilter(filterValue);
   }
 
   function handleSignOut() {
@@ -644,8 +643,8 @@ function MSPublishingContent() {
         <DisciplineManagementPanel />
       </RoleGuard>
     );
-  } else if (view === 'dept' && activeDept) {
-    const deptDocs = allDocuments.filter((d) => refName(d.department) === activeDept);
+  } else if (view === 'dept' && activeFilter) {
+    const deptDocs = allDocuments.filter((d) => refName(d.department) === activeFilter);
     const due = deptDocs.filter(isDocumentOverdue);
     const inProgress = deptDocs.filter((d) =>
       (['Draft', 'Pending Assignment', ...ACTIVE_PIPELINE_STATUSES] as readonly string[]).includes(d.status)
@@ -667,17 +666,57 @@ function MSPublishingContent() {
           />
         )}
         <DocumentsTable
-          title={`${activeDept} — In Progress`}
+          title={`${activeFilter} — In Progress`}
           documents={inProgress}
           columns={[titleColumn, typeColumn, authorColumn, statusColumn]}
           onTitleClick={setDetailDoc}
           renderActions={viewOnlyActions}
-          emptyTitle={`Nothing in progress for ${activeDept}`}
+          emptyTitle={`Nothing in progress for ${activeFilter}`}
         />
         <p className="text-center text-xs text-gray-400">
           {publishedCount} published document{publishedCount !== 1 ? 's' : ''} available on the{' '}
           <Link to="/read-site" className="font-semibold text-brand-700 hover:underline">
             Read Site →
+          </Link>
+        </p>
+      </RoleGuard>
+    );
+  } else if (view === 'discipline' && activeFilter) {
+    // Discipline is Drawing Register-only metadata, so this naturally only
+    // ever matches Drawing Register documents (see document.model.js).
+    const disciplineDocs = allDocuments.filter((d) => refName(d.discipline) === activeFilter);
+    const due = disciplineDocs.filter(isDocumentOverdue);
+    const inProgress = disciplineDocs.filter((d) =>
+      (['Draft', 'Pending Assignment', ...ACTIVE_PIPELINE_STATUSES] as readonly string[]).includes(d.status)
+    );
+    const publishedCount = disciplineDocs.filter((d) => d.status === 'Published').length;
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        {due.length > 0 && (
+          <DocumentsTable
+            title="Due for Review"
+            documents={due}
+            columns={[titleColumn, authorColumn, dateColumn('publishedAt', 'Published'), nextReviewColumn]}
+            onTitleClick={setDetailDoc}
+            renderActions={(doc) => (
+              <ActionButton variant="primary" onClick={() => initiateRevision.mutate({ id: doc._id })}>
+                Initiate Revision
+              </ActionButton>
+            )}
+          />
+        )}
+        <DocumentsTable
+          title={`${activeFilter} — In Progress`}
+          documents={inProgress}
+          columns={[titleColumn, departmentColumn, authorColumn, statusColumn]}
+          onTitleClick={setDetailDoc}
+          renderActions={viewOnlyActions}
+          emptyTitle={`Nothing in progress for ${activeFilter}`}
+        />
+        <p className="text-center text-xs text-gray-400">
+          {publishedCount} published document{publishedCount !== 1 ? 's' : ''} available on the{' '}
+          <Link to="/drawing-register" className="font-semibold text-brand-700 hover:underline">
+            Drawing Register →
           </Link>
         </p>
       </RoleGuard>
@@ -731,7 +770,7 @@ function MSPublishingContent() {
         <MSPublishingSidebar
           role={role}
           activeView={view}
-          activeDept={activeDept}
+          activeFilter={activeFilter}
           counts={counts}
           onNavigate={handleNavigate}
         />
