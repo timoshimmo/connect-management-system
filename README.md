@@ -6,12 +6,15 @@ engineering/drawing documents (Drawing Register).
 
 ## Architecture
 
-Monorepo with two independent apps:
+Monorepo with two independent apps, plus a thin Netlify Functions wrapper around the backend:
 
 ```
 management_app/
-├── backend/   Node.js + Express + MongoDB (Mongoose) API
-└── frontend/  React + TypeScript + Vite SPA
+├── backend/            Node.js + Express + MongoDB (Mongoose) API
+├── frontend/            React + TypeScript + Vite SPA
+├── netlify/functions/   Netlify Function wrapper around backend/src/app.js (see Deployment)
+├── vercel.json          Vercel multi-service config (see Deployment)
+└── netlify.toml         Netlify build/redirects config (see Deployment)
 ```
 
 ### Tech stack
@@ -102,6 +105,41 @@ After seeding, all MS Publishing demo accounts share the password `password123` 
 `admin@stac.com` for the Controller role). Drawing Register demo accounts also share
 `password123` (e.g. `e.adeyemi@stac.com`) — a completely separate account system from MS
 Publishing, with its own login at `/drawing-register/login`.
+
+## Deployment
+
+Both platforms serve the frontend and backend from the same origin (no separate API domain,
+no CORS config needed beyond what's already there) via a same-origin `/api/*` rewrite.
+
+### Vercel
+
+`vercel.json` at the repo root defines two services — `frontend` (Vite static build) and
+`backend` (the Express app, imported directly via `backend/src/app.js`) — with `/api/*`
+rewritten to the backend service and everything else to the frontend (with its own SPA
+fallback rewrite). Set the backend's env vars (see `backend/.env.example`) and
+`FRONTEND_URL` (your deployed domain) in the Vercel project settings.
+
+### Netlify
+
+- `netlify.toml` — `base: frontend` for the static build (Netlify installs and builds the
+  frontend from there); `[[redirects]]` send `/api/*` to the Netlify Function and everything
+  else to `index.html` for SPA routing.
+- `netlify/functions/api.js` — wraps the exact same `backend/src/app.js` Express app as a
+  Netlify Function via `serverless-http`. No backend code is duplicated or forked between
+  platforms.
+- Root `package.json` — exists only so Netlify installs `serverless-http` for that one
+  function file; it isn't a workspace root, `frontend/` and `backend/` still each have their
+  own independent `package.json`.
+- `bcrypt` is a native module (compiled binary, not pure JS) — `netlify.toml` marks it
+  `external_node_modules` so esbuild ships it as-is (compiled during Netlify's own Linux
+  build) instead of trying to bundle it, which would break at runtime.
+- Set the same backend env vars from `backend/.env.example` in the Netlify site's
+  **Environment variables**, plus `FRONTEND_URL` set to your Netlify domain.
+- **Known constraint**: Netlify Functions (like most serverless platforms, including Vercel)
+  have a request/response payload size limit well under the app's 25MB document upload limit
+  — very large uploads may fail in production even though they work locally. This isn't
+  something either platform's free/standard tier config can raise; a large-file upload would
+  need a different path (e.g. a presigned direct-to-R2 upload) if it becomes a real issue.
 
 ## Project structure
 

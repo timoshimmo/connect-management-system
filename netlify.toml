@@ -1,0 +1,28 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  # Relative to `base` above, so this resolves to <repo root>/netlify/functions.
+  directory = "../netlify/functions"
+  node_bundler = "esbuild"
+  # bcrypt ships a compiled native binary — esbuild can't inline it, so it
+  # must be left external and shipped as-is (compiled during Netlify's own
+  # linux build, matching the Functions runtime).
+  external_node_modules = ["bcrypt"]
+
+# API calls stay same-origin: the frontend's apiClient defaults to a
+# relative `/api` base URL outside dev, so no CORS/origin config changes
+# needed versus the existing Vercel setup.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# SPA fallback — client-side routes (e.g. /ms-publishing) must resolve to
+# index.html on a hard refresh or direct link, not 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
