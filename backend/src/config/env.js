@@ -23,4 +23,12 @@ module.exports = {
     bucketName: required('R2_BUCKET_NAME', ''),
     publicBaseUrl: required('R2_PUBLIC_BASE_URL', ''),
   },
+  smtp: {
+    host: required('SMTP_HOST', ''),
+    port: Number(required('SMTP_PORT', 465)),
+    secure: required('SMTP_SECURE', 'true') === 'true',
+    user: required('SMTP_USER', ''),
+    pass: required('SMTP_PASS', ''),
+    fromAddress: required('SMTP_FROM', ''),
+  },
 };
