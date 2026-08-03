@@ -7,6 +7,7 @@ export type { DocumentColumn } from './DocumentsTable';
 export { StatusBadge } from './StatusBadge';
 export { ActionButton } from './ActionButton';
 export { AssignmentAction } from './AssignmentAction';
+export { ReassignModal } from './ReassignModal';
 export { NewDocumentModal } from './NewDocumentModal';
 export { EditDocumentModal } from './EditDocumentModal';
 export { DocumentDetailModal } from './DocumentDetailModal';

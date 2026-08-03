@@ -61,6 +61,11 @@ const assign = asyncHandler(async (req, res) => {
   res.json({ document: doc });
 });
 
+const reassign = asyncHandler(async (req, res) => {
+  const doc = await documentService.reassignReviewerApprover(req.params.id, req.body, req.user.id);
+  res.json({ document: doc });
+});
+
 const forward = asyncHandler(async (req, res) => {
   const doc = await documentService.forwardToApproval(req.params.id, req.user.id);
   res.json({ document: doc });
@@ -125,6 +130,7 @@ module.exports = {
   listVersions,
   submitForReview,
   assign,
+  reassign,
   forward,
   returnToAuthor,
   approve,

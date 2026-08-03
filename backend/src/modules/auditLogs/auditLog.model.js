@@ -12,6 +12,7 @@ const AUDIT_ACTIONS = [
   'download',
   'preview',
   'delete',
+  'reassign',
 ];
 
 const auditLogSchema = new mongoose.Schema(

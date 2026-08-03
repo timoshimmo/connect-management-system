@@ -150,6 +150,10 @@ const ACTION_MESSAGES: Record<string, { success: (doc: ApiDocument) => [string, 
     success: (doc) => ['Reviewer & approver assigned', `"${doc.title}" moved to Under Review.`],
     error: 'Couldn’t assign a reviewer and approver.',
   },
+  reassign: {
+    success: (doc) => ['Reassigned', `Reviewer/approver updated for "${doc.title}".`],
+    error: 'Couldn’t reassign this document.',
+  },
   forward: {
     success: (doc) => ['Forwarded to approver', `"${doc.title}" moved to Pending Approval.`],
     error: 'Couldn’t forward this document to the approver.',
@@ -211,6 +215,9 @@ export function useSubmitForReviewMutation() {
 }
 export function useAssignMutation() {
   return useDocumentAction('assign');
+}
+export function useReassignMutation() {
+  return useDocumentAction('reassign');
 }
 export function useForwardMutation() {
   return useDocumentAction('forward');

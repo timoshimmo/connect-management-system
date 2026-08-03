@@ -255,6 +255,95 @@ async function assignReviewerApprover(id, { reviewer, approver }, userId) {
   return doc;
 }
 
+const REASSIGNABLE_STATUSES = ['Under Review', 'Pending Approval', 'Pending Publishing'];
+
+/**
+ * Controller-only: changes the reviewer and/or approver on a document that
+ * has already been assigned once, without advancing or reverting its
+ * workflow status — unlike assignReviewerApprover (which only ever runs
+ * once, from "Pending Assignment", and always moves the document to "Under
+ * Review"), this can run any number of times while the document is Under
+ * Review / Pending Approval / Pending Publishing, or back with the author
+ * for changes (Draft + returned). "Pending Assignment" itself isn't
+ * eligible here — that initial assignment is exactly what
+ * assignReviewerApprover already handles.
+ */
+async function reassignReviewerApprover(id, { reviewer, approver, reason }, userId) {
+  const doc = await Document.findById(id);
+  if (!doc) throw new NotFoundError('Document not found');
+
+  const eligible = REASSIGNABLE_STATUSES.includes(doc.status) || (doc.status === 'Draft' && doc.returned);
+  if (!eligible) {
+    throw new ConflictError('This document cannot be reassigned in its current status.');
+  }
+
+  const previousReviewer = doc.reviewer ? doc.reviewer.toString() : null;
+  const previousApprover = doc.approver ? doc.approver.toString() : null;
+  const reviewerChanged = Boolean(reviewer) && reviewer !== previousReviewer;
+  const approverChanged = Boolean(approver) && approver !== previousApprover;
+
+  if (!reviewerChanged && !approverChanged) {
+    throw new BadRequestError('Select a different reviewer and/or approver to reassign.');
+  }
+
+  if (reviewerChanged) doc.reviewer = reviewer;
+  if (approverChanged) doc.approver = approver;
+  await doc.save();
+
+  await recordAudit({
+    user: userId,
+    action: 'reassign',
+    targetType: 'document',
+    targetId: doc._id,
+    metadata: {
+      reason,
+      previousReviewer,
+      newReviewer: reviewerChanged ? reviewer : previousReviewer,
+      previousApprover,
+      newApprover: approverChanged ? approver : previousApprover,
+    },
+  });
+
+  if (reviewerChanged) {
+    if (previousReviewer) {
+      await notifyUser(previousReviewer, {
+        type: 'reviewer_unassigned',
+        message: `You are no longer the reviewer for "${doc.title}" (${doc.docId}).`,
+        relatedDocument: doc._id,
+      });
+    }
+    await notifyUser(doc.reviewer, {
+      type: 'review_assigned',
+      message: `You have been assigned to review "${doc.title}" (${doc.docId}).`,
+      relatedDocument: doc._id,
+    });
+  }
+
+  if (approverChanged) {
+    if (previousApprover) {
+      await notifyUser(previousApprover, {
+        type: 'approver_unassigned',
+        message: `You are no longer the approver for "${doc.title}" (${doc.docId}).`,
+        relatedDocument: doc._id,
+      });
+    }
+    await notifyUser(doc.approver, {
+      type: 'approval_pending',
+      message: `You have been assigned to approve "${doc.title}" (${doc.docId}).`,
+      relatedDocument: doc._id,
+    });
+  }
+
+  const changedWhat = reviewerChanged && approverChanged ? 'reviewer and approver' : reviewerChanged ? 'reviewer' : 'approver';
+  await notifyUser(doc.author, {
+    type: 'document_reassigned',
+    message: `Your document "${doc.title}" (${doc.docId}) has been reassigned to a new ${changedWhat}.`,
+    relatedDocument: doc._id,
+  });
+
+  return doc;
+}
+
 async function forwardToApproval(id, userId) {
   const doc = await Document.findById(id);
   if (!doc) throw new NotFoundError('Document not found');
@@ -437,6 +526,7 @@ module.exports = {
   getVersions,
   submitForReview,
   assignReviewerApprover,
+  reassignReviewerApprover,
   forwardToApproval,
   returnToAuthor,
   approve,

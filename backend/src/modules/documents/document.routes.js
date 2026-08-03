@@ -8,6 +8,7 @@ const {
   createDocumentSchema,
   updateDocumentSchema,
   assignSchema,
+  reassignSchema,
   returnSchema,
   archiveSchema,
   listQuerySchema,
@@ -191,6 +192,31 @@ router.post('/:id/submit', requireRole('author', 'controller'), controller.submi
  *       200: { description: Document is now Under Review }
  */
 router.post('/:id/assign', requireRole('controller'), validate({ body: assignSchema }), controller.assign);
+
+/**
+ * @openapi
+ * /documents/{id}/reassign:
+ *   post:
+ *     tags: [Documents]
+ *     summary: Controller reassigns the reviewer and/or approver on a document already in progress (Under Review, Pending Approval, Pending Publishing, or Draft-with-changes-requested). Status is left unchanged.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reviewer: { type: string, example: "65f0c2..." }
+ *               approver: { type: string, example: "65f0c2..." }
+ *               reason: { type: string, example: "Original reviewer is on leave" }
+ *     responses:
+ *       200: { description: Reviewer and/or approver updated }
+ *       409: { description: Document isn't in a reassignable status }
+ */
+router.post('/:id/reassign', requireRole('controller'), validate({ body: reassignSchema }), controller.reassign);
 
 /**
  * @openapi

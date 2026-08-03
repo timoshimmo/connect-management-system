@@ -34,6 +34,9 @@ const NOTIFICATION_META: Record<string, NotificationMeta> = {
   comment_added: { title: 'New Comment', icon: MessageSquare, iconClasses: 'bg-blue-50 text-blue-600' },
   document_archived: { title: 'Document Archived', icon: Archive, iconClasses: 'bg-gray-100 text-gray-600' },
   document_restored: { title: 'Document Restored', icon: ArchiveRestore, iconClasses: 'bg-brand-50 text-brand-700' },
+  reviewer_unassigned: { title: 'Reviewer Reassigned', icon: Undo2, iconClasses: 'bg-gray-100 text-gray-600' },
+  approver_unassigned: { title: 'Approver Reassigned', icon: Undo2, iconClasses: 'bg-gray-100 text-gray-600' },
+  document_reassigned: { title: 'Document Reassigned', icon: ClipboardCheck, iconClasses: 'bg-amber-50 text-amber-600' },
 };
 
 const FALLBACK_META: NotificationMeta = { title: 'Notification', icon: Bell, iconClasses: 'bg-gray-100 text-gray-500' };

@@ -21,6 +21,7 @@ import {
   useInitiateRevisionMutation,
   useArchiveMutation,
   useRestoreMutation,
+  useReassignMutation,
 } from '@/features/documents/hooks';
 import { isDocumentOverdue, isPublishedThisMonth } from '@/features/documents/utils';
 import { UserManagementPanel } from '@/features/users';
@@ -43,6 +44,7 @@ import {
   ArchiveConfirmModal,
   RestoreConfirmModal,
   ArchivedDocumentsPanel,
+  ReassignModal,
   titleColumn,
   departmentColumn,
   typeColumn,
@@ -60,6 +62,16 @@ const ACTIVE_PIPELINE_STATUSES = [
   'Pending Approval',
   'Pending Publishing',
 ] as const;
+
+// "Pending Assignment" is deliberately excluded — that initial assignment
+// is what AssignmentAction/useAssignMutation already handles, and it also
+// transitions status to "Under Review". Reassign only ever changes who's
+// assigned on a document that's already been assigned once, and never
+// touches status (see reassignReviewerApprover in the backend).
+const REASSIGNABLE_STATUSES = ['Under Review', 'Pending Approval', 'Pending Publishing'] as const;
+function canReassign(doc: ApiDocument): boolean {
+  return (REASSIGNABLE_STATUSES as readonly string[]).includes(doc.status) || (doc.status === 'Draft' && doc.returned);
+}
 
 export function MSPublishingPage() {
   return (
@@ -97,6 +109,7 @@ function MSPublishingContent() {
   const initiateRevision = useInitiateRevisionMutation();
   const archiveDocument = useArchiveMutation();
   const restoreDocument = useRestoreMutation();
+  const reassignDocument = useReassignMutation();
 
   const [view, setView] = useState<ViewKey>('dashboard');
   const [activeFilter, setActiveFilter] = useState<string | undefined>();
@@ -105,6 +118,7 @@ function MSPublishingContent() {
   const [editDoc, setEditDoc] = useState<ApiDocument | null>(null);
   const [archiveDoc, setArchiveDoc] = useState<ApiDocument | null>(null);
   const [restoreDoc, setRestoreDoc] = useState<ApiDocument | null>(null);
+  const [reassignDoc, setReassignDoc] = useState<ApiDocument | null>(null);
 
   // Deep-link support for the notification bell's "navigate to related
   // document" — /ms-publishing?doc=<mongoId> opens that document's detail
@@ -225,6 +239,13 @@ function MSPublishingContent() {
   const viewOnlyActions = (doc: ApiDocument) => (
     <ActionButton onClick={() => setDetailDoc(doc)}>View</ActionButton>
   );
+
+  // Admin Controller-only — self-guards on both role and eligibility, so
+  // callers can use it unconditionally inside any renderActions callback.
+  const reassignButton = (doc: ApiDocument) =>
+    user.role === 'controller' && canReassign(doc) ? (
+      <ActionButton onClick={() => setReassignDoc(doc)}>Reassign</ActionButton>
+    ) : null;
 
   const reviewAction = (doc: ApiDocument) => (
     <ActionButton
@@ -383,6 +404,7 @@ function MSPublishingContent() {
                 <ActionButton variant="danger" onClick={() => rejectPublishing.mutate({ id: doc._id })}>
                   Reject
                 </ActionButton>
+                {reassignButton(doc)}
               </>
             )}
             emptyTitle="No documents awaiting publishing"
@@ -394,9 +416,12 @@ function MSPublishingContent() {
               columns={[titleColumn, departmentColumn, dateColumn('createdAt', 'Last Modified'), statusColumn]}
               onTitleClick={setDetailDoc}
               renderActions={(doc) => (
-                <ActionButton variant="primary" onClick={() => submitForReview.mutate({ id: doc._id })}>
-                  Submit for Review
-                </ActionButton>
+                <>
+                  <ActionButton variant="primary" onClick={() => submitForReview.mutate({ id: doc._id })}>
+                    Submit for Review
+                  </ActionButton>
+                  {reassignButton(doc)}
+                </>
               )}
             />
           )}
@@ -611,6 +636,7 @@ function MSPublishingContent() {
               <ActionButton variant="danger" onClick={() => rejectPublishing.mutate({ id: doc._id })}>
                 Reject
               </ActionButton>
+              {reassignButton(doc)}
             </>
           )}
           emptyTitle="No documents awaiting publishing"
@@ -670,7 +696,12 @@ function MSPublishingContent() {
           documents={inProgress}
           columns={[titleColumn, typeColumn, authorColumn, statusColumn]}
           onTitleClick={setDetailDoc}
-          renderActions={viewOnlyActions}
+          renderActions={(doc) => (
+            <>
+              {viewOnlyActions(doc)}
+              {reassignButton(doc)}
+            </>
+          )}
           emptyTitle={`Nothing in progress for ${activeFilter}`}
         />
         <p className="text-center text-xs text-gray-400">
@@ -710,7 +741,12 @@ function MSPublishingContent() {
           documents={inProgress}
           columns={[titleColumn, departmentColumn, authorColumn, statusColumn]}
           onTitleClick={setDetailDoc}
-          renderActions={viewOnlyActions}
+          renderActions={(doc) => (
+            <>
+              {viewOnlyActions(doc)}
+              {reassignButton(doc)}
+            </>
+          )}
           emptyTitle={`Nothing in progress for ${activeFilter}`}
         />
         <p className="text-center text-xs text-gray-400">
@@ -837,6 +873,19 @@ function MSPublishingContent() {
             )
           }
           isSubmitting={updateDocument.isPending}
+        />
+      )}
+      {reassignDoc && (
+        <ReassignModal
+          doc={reassignDoc}
+          onClose={() => setReassignDoc(null)}
+          isSubmitting={reassignDocument.isPending}
+          onSave={(payload) =>
+            reassignDocument.mutate(
+              { id: reassignDoc._id, body: payload },
+              { onSuccess: () => setReassignDoc(null) }
+            )
+          }
         />
       )}
     </>

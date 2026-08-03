@@ -63,6 +63,17 @@ const assignSchema = z.object({
   approver: objectId,
 });
 
+const reassignSchema = z
+  .object({
+    reviewer: objectId.optional(),
+    approver: objectId.optional(),
+    reason: z.string().min(1, 'A reason is required.'),
+  })
+  .refine((data) => data.reviewer || data.approver, {
+    message: 'Select a new reviewer and/or approver.',
+    path: ['reviewer'],
+  });
+
 const returnSchema = z.object({
   notes: z.string().optional(),
 });
@@ -84,6 +95,7 @@ module.exports = {
   createDocumentSchema,
   updateDocumentSchema,
   assignSchema,
+  reassignSchema,
   returnSchema,
   archiveSchema,
   listQuerySchema,
