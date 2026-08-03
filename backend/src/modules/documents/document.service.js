@@ -259,14 +259,23 @@ const REASSIGNABLE_STATUSES = ['Under Review', 'Pending Approval', 'Pending Publ
 
 /**
  * Controller-only: changes the reviewer and/or approver on a document that
- * has already been assigned once, without advancing or reverting its
- * workflow status — unlike assignReviewerApprover (which only ever runs
- * once, from "Pending Assignment", and always moves the document to "Under
- * Review"), this can run any number of times while the document is Under
- * Review / Pending Approval / Pending Publishing, or back with the author
- * for changes (Draft + returned). "Pending Assignment" itself isn't
- * eligible here — that initial assignment is exactly what
+ * has already been assigned once — unlike assignReviewerApprover (which
+ * only ever runs once, from "Pending Assignment", and always moves the
+ * document to "Under Review"), this can run any number of times while the
+ * document is Under Review / Pending Approval / Pending Publishing, or back
+ * with the author for changes (Draft + returned). "Pending Assignment"
+ * itself isn't eligible here — that initial assignment is exactly what
  * assignReviewerApprover already handles.
+ *
+ * Reassigning restarts the relevant workflow stage, since whoever's newly
+ * assigned hasn't done that step yet: reassigning the reviewer sends the
+ * document back to "Under Review" even if it had already moved past that
+ * point (Pending Approval / Pending Publishing), and reassigning just the
+ * approver (reviewer unchanged) only needs to go back to "Pending Approval"
+ * — the existing reviewer's review still stands. A document still sitting
+ * with the author (Draft + returned) isn't pulled into either stage early;
+ * only its reviewer/approver fields change, keeping it with the author
+ * until they resubmit.
  */
 async function reassignReviewerApprover(id, { reviewer, approver, reason }, userId) {
   const doc = await Document.findById(id);
@@ -277,6 +286,7 @@ async function reassignReviewerApprover(id, { reviewer, approver, reason }, user
     throw new ConflictError('This document cannot be reassigned in its current status.');
   }
 
+  const previousStatus = doc.status;
   const previousReviewer = doc.reviewer ? doc.reviewer.toString() : null;
   const previousApprover = doc.approver ? doc.approver.toString() : null;
   const reviewerChanged = Boolean(reviewer) && reviewer !== previousReviewer;
@@ -288,6 +298,15 @@ async function reassignReviewerApprover(id, { reviewer, approver, reason }, user
 
   if (reviewerChanged) doc.reviewer = reviewer;
   if (approverChanged) doc.approver = approver;
+
+  if (doc.status !== 'Draft') {
+    if (reviewerChanged) {
+      doc.status = 'Under Review';
+    } else if (approverChanged) {
+      doc.status = 'Pending Approval';
+    }
+  }
+
   await doc.save();
 
   await recordAudit({
@@ -297,6 +316,8 @@ async function reassignReviewerApprover(id, { reviewer, approver, reason }, user
     targetId: doc._id,
     metadata: {
       reason,
+      previousStatus,
+      newStatus: doc.status,
       previousReviewer,
       newReviewer: reviewerChanged ? reviewer : previousReviewer,
       previousApprover,
@@ -335,9 +356,10 @@ async function reassignReviewerApprover(id, { reviewer, approver, reason }, user
   }
 
   const changedWhat = reviewerChanged && approverChanged ? 'reviewer and approver' : reviewerChanged ? 'reviewer' : 'approver';
+  const restartNote = doc.status !== previousStatus ? ` It's back in "${doc.status}".` : '';
   await notifyUser(doc.author, {
     type: 'document_reassigned',
-    message: `Your document "${doc.title}" (${doc.docId}) has been reassigned to a new ${changedWhat}.`,
+    message: `Your document "${doc.title}" (${doc.docId}) has been reassigned to a new ${changedWhat}.${restartNote}`,
     relatedDocument: doc._id,
   });
 

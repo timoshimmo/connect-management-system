@@ -38,8 +38,17 @@ export function ReassignModal({ doc, onClose, onSave, isSubmitting }: ReassignMo
   const [approverId, setApproverId] = useState(initialApproverId);
   const [reason, setReason] = useState('');
 
-  const changed = reviewerId !== initialReviewerId || approverId !== initialApproverId;
+  const reviewerChanged = reviewerId !== initialReviewerId;
+  const approverChanged = approverId !== initialApproverId;
+  const changed = reviewerChanged || approverChanged;
   const canSubmit = changed && reason.trim().length > 0;
+
+  // Mirrors the backend's restart rule (reassignReviewerApprover): a new
+  // reviewer restarts from "Under Review"; a new approver alone restarts
+  // from "Pending Approval". Documents still with the author (Draft) aren't
+  // pulled forward early, so no restart happens there.
+  const restartStatus =
+    doc.status === 'Draft' ? null : reviewerChanged ? 'Under Review' : approverChanged ? 'Pending Approval' : null;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -116,6 +125,13 @@ export function ReassignModal({ doc, onClose, onSave, isSubmitting }: ReassignMo
               placeholder="Select an approver..."
             />
           </div>
+
+          {restartStatus && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              This will move the document back to <span className="font-semibold">{restartStatus}</span> so the
+              newly assigned {reviewerChanged ? 'reviewer' : 'approver'} can start fresh.
+            </p>
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-gray-600">Reason for Reassignment *</label>
