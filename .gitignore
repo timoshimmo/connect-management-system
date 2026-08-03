@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+*.tsbuildinfo
 
 # Environment variables (contain real secrets — .env.example files are tracked instead)
 .env
@@ -22,3 +23,5 @@ Thumbs.db
 
 # Local-only tool config
 .claude/
+.qodo/
+.vercel/

@@ -30,17 +30,37 @@ docx-preview (in-app document preview).
   Pending Approval → Pending Publishing → Published → Archived) with role-based permissions
   (Author, Reviewer, Approver, Controller), versioned file uploads, comments, notifications,
   and audit logging.
-- **Read Site** — public, unauthenticated browsing of published documents by department,
-  category, and search, with in-app PDF/DOCX preview and download.
+- **Document destinations** — every document is created for either the **Read Site** or the
+  **Drawing Register**. The destination is chosen first and drives which metadata fields the
+  Create/Edit form shows (Read Site: Type; Drawing Register: Drawing Number, Discipline, Area,
+  Revision) and which storefront the document appears on once published — the workflow itself
+  is identical for both.
+- **Read Site** — public, unauthenticated browsing of published documents by department, type,
+  and search, with Onshore/Offshore/Both location tabs and in-app PDF/DOCX preview and download.
 - **Drawing Register** — a second, separately-authenticated storefront (its own accounts,
-  login, and session) for documents whose "destination" was set to Drawing Register at
-  creation time. Mirrors the Read Site's browsing UI but requires sign-in.
+  login, and session) for documents whose destination was set to Drawing Register at creation
+  time. Mirrors the Read Site's browsing UI, adds a Discipline filter, and requires sign-in.
+- **Department & Discipline management** — Controllers manage both from the Admin Dashboard
+  (create, edit, activate/deactivate, search, pagination). Departments are used throughout the
+  app; Disciplines are Drawing-Register-only and populate the Discipline dropdown dynamically
+  (never hardcoded). The MS Publishing sidebar's "By Department"/"By Discipline" filters and
+  both storefronts' browsing grids read live from these collections.
+- **Contact Document Controller** — a reusable modal (Subject, Message, Related Department,
+  Related Document) available on both the Read Site and the Drawing Register, which notifies
+  the responsible Controller and logs an audit entry.
+- **Reassign Reviewer/Approver** — Controllers can reassign the reviewer and/or approver on any
+  document still in progress (Under Review, Pending Approval, Pending Publishing, or back with
+  the author for changes), with a required reason. Reassigning restarts the relevant workflow
+  stage — a new reviewer sends the document back to Under Review, a new approver alone sends it
+  back to Pending Approval — since whoever's newly assigned hasn't done their step yet. Both the
+  previous and newly assigned people are notified, along with the document's author, and the
+  change is recorded in the audit log.
 - **User management** — Controllers manage both MS Publishing accounts and Drawing Register
   accounts from dedicated tabs (search, filter, sort, pagination, activate/deactivate, and —
   for Drawing Register accounts — password resets).
 - **Notifications & audit logs** — role-aware in-app notifications (polling-based, swappable
   for real-time later) and a full audit trail of logins, uploads, edits, reviews, approvals,
-  publishes, and archives.
+  reassignments, publishes, and archives.
 
 ## Getting started
 
@@ -48,7 +68,9 @@ docx-preview (in-app document preview).
 
 - Node.js 18+
 - A MongoDB instance (local or Atlas)
-- A Cloudflare R2 bucket (for file uploads) — see `backend/.env.example`
+- A Cloudflare R2 bucket (for file uploads) — see `backend/.env.example`. The bucket's CORS
+  policy must allow `GET`/`HEAD` (with a `Range` header) from your frontend origin, or in-app
+  PDF preview will fail even though direct downloads still work.
 
 ### Backend
 
@@ -56,7 +78,7 @@ docx-preview (in-app document preview).
 cd backend
 npm install
 cp .env.example .env   # then fill in MONGODB_URI, JWT secrets, and R2 credentials
-npm run seed            # seeds demo departments, users, and documents
+npm run seed            # seeds demo departments, disciplines, users, and documents
 npm run dev
 ```
 
@@ -85,15 +107,20 @@ Publishing, with its own login at `/drawing-register/login`.
 
 ```
 backend/src/
-├── modules/       Feature-based modules (auth, documents, users, drawingRegisterAuth, ...)
-├── middlewares/    Auth, validation, rate limiting, uploads
-├── config/         Env, database, Cloudflare R2
+├── modules/       Feature-based modules: auth, users, roles, documents, departments,
+│                  disciplines, contactMessages, comments, notifications, auditLogs,
+│                  dashboard, readSite, drawingRegisterAuth, drawingRegisterUsers,
+│                  drawingRegisterContent
+├── middlewares/   Auth, validation, rate limiting, uploads
+├── config/        Env, database, Cloudflare R2
 └── database/seed.js
 
 frontend/src/
-├── features/       Feature-based modules (ms-publishing, read-site, drawing-register, ...)
-├── components/     Shared UI (layout, auth guards, data tables)
-├── pages/          Route-level views
-├── store/          Redux slices (session/UI state only)
-└── lib/            API clients, typed API response shapes
+├── features/      Feature-based modules: ms-publishing, read-site, drawing-register,
+│                  drawing-register-auth, drawing-register-users, documents, departments,
+│                  disciplines, users, comments, notifications, document-preview, toast, auth
+├── components/    Shared UI (layout, auth guards, data tables)
+├── pages/         Route-level views
+├── store/         Redux slices (session/UI state only)
+└── lib/           API clients, typed API response shapes
 ```
