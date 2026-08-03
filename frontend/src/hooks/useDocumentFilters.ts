@@ -6,6 +6,8 @@ interface Document {
   title: string;
   docId: string;
   publishedDate: string;
+  /** Drawing Register-only — absent/empty for Read Site documents. */
+  discipline?: string;
 }
 
 const TAB_TYPE_MAP: { [key: string]: string } = {
@@ -22,6 +24,8 @@ interface DocumentFilters {
   setDepartment: React.Dispatch<React.SetStateAction<string>>;
   type: string;
   setType: React.Dispatch<React.SetStateAction<string>>;
+  discipline: string;
+  setDiscipline: React.Dispatch<React.SetStateAction<string>>;
   activeTab: string;
   setActiveTab: React.Dispatch<React.SetStateAction<string>>;
   sortValue: SortValue;
@@ -41,6 +45,7 @@ export function useDocumentFilters(
   const [query, setQuery] = useState("");
   const [department, setDepartment] = useState(initialDepartment);
   const [type, setType] = useState("all");
+  const [discipline, setDiscipline] = useState("all");
   const [activeTab, setActiveTab] = useState("recently-updated");
   const [sortValue, setSortValue] = useState<SortValue>("newest");
 
@@ -64,6 +69,10 @@ export function useDocumentFilters(
 
     if (type !== "all") {
       result = result.filter((doc) => doc.type === type);
+    }
+
+    if (discipline !== "all") {
+      result = result.filter((doc) => doc.discipline === discipline);
     }
 
     if (query.trim()) {
@@ -92,12 +101,13 @@ export function useDocumentFilters(
     });
 
     return result;
-  }, [allDocuments, activeTab, department, type, query, sortValue]);
+  }, [allDocuments, activeTab, department, type, discipline, query, sortValue]);
 
   const clearFilters = () => {
     setQuery("");
     setDepartment("all");
     setType("all");
+    setDiscipline("all");
   };
 
   return {
@@ -107,6 +117,8 @@ export function useDocumentFilters(
     setDepartment,
     type,
     setType,
+    discipline,
+    setDiscipline,
     activeTab,
     setActiveTab,
     sortValue,

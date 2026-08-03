@@ -62,6 +62,7 @@ function DrawingRegisterContent() {
         publishedDate: doc.publishedAt as string,
         type: doc.location,
         category: doc.type,
+        discipline: refName(doc.discipline),
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
         mongoId: doc._id,
@@ -88,6 +89,8 @@ function DrawingRegisterContent() {
     setDepartment,
     type,
     setType,
+    discipline,
+    setDiscipline,
     activeTab,
     setActiveTab,
     sortValue,
@@ -97,6 +100,10 @@ function DrawingRegisterContent() {
   } = useDocumentFilters(documents, 'all');
 
   const documentTypes = useMemo(() => [...new Set(documents.map((doc) => doc.type))], [documents]);
+  const disciplineOptions = useMemo(
+    () => [...new Set(documents.map((doc) => doc.discipline).filter((d) => d && d !== '—'))],
+    [documents]
+  );
 
   const handleSelectDepartment = (dept: { name: string }) => {
     setDepartment(slugify(dept.name));
@@ -125,6 +132,9 @@ function DrawingRegisterContent() {
             type={type}
             onTypeChange={setType}
             types={documentTypes}
+            discipline={discipline}
+            onDisciplineChange={setDiscipline}
+            disciplines={disciplineOptions}
             onSearch={() => {}}
           />
         </div>

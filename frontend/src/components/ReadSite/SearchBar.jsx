@@ -1,11 +1,31 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 /**
- * Search + filter row for the Read Site: free-text search plus department
- * and type selects. Filtering itself is reactive (handled by the parent via
- * useDocumentFilters as the user types/selects); the Search button and
- * onSearch callback exist for parity with the reference design and any
- * future "submit search" analytics hook.
+ * Search + filter row for the Read Site and Drawing Register: free-text
+ * search plus department and type selects. Filtering itself is reactive
+ * (handled by the parent via useDocumentFilters as the user types/selects);
+ * the Search button and onSearch callback exist for parity with the
+ * reference design and any future "submit search" analytics hook.
+ *
+ * The Discipline select is Drawing Register-only — pass `discipline`,
+ * `onDisciplineChange` and `disciplines` to show it (see
+ * DrawingRegisterPage.tsx); omit them (as ReadSitePage.tsx does) and it
+ * doesn't render, since Read Site documents never have a discipline.
+ *
+ * @param {{
+ *   query: string,
+ *   onQueryChange: (value: string) => void,
+ *   department: string,
+ *   onDepartmentChange: (value: string) => void,
+ *   departments: { id: string, name: string }[],
+ *   type: string,
+ *   onTypeChange: (value: string) => void,
+ *   types: string[],
+ *   discipline?: string,
+ *   onDisciplineChange?: (value: string) => void,
+ *   disciplines?: string[] | null,
+ *   onSearch: () => void,
+ * }} props
  */
 export default function SearchBar({
   query,
@@ -16,6 +36,9 @@ export default function SearchBar({
   type,
   onTypeChange,
   types,
+  discipline = 'all',
+  onDisciplineChange = () => {},
+  disciplines = null,
   onSearch,
 }) {
   return (
@@ -62,6 +85,22 @@ export default function SearchBar({
           </option>
         ))}
       </select>
+
+      {disciplines && (
+        <select
+          value={discipline}
+          onChange={(event) => onDisciplineChange(event.target.value)}
+          aria-label="Filter by discipline"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/40"
+        >
+          <option value="all">All Disciplines</option>
+          {disciplines.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      )}
 
       <button
         type="button"
