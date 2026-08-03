@@ -11,10 +11,10 @@ export function HeroSection() {
   const { data: stats, isLoading } = useReadSiteStatsQuery();
 
   const metrics = [
-    { label: 'Total Documents', value: stats?.totalDocuments, icon: FileText },
-    { label: 'Pending Approval', value: stats?.pendingApproval, icon: Clock },
-    { label: 'Published This Month', value: stats?.publishedThisMonth, icon: CheckCircle2 },
-    { label: 'Due for Review', value: stats?.dueForReview, icon: AlertCircle },
+    { label: 'Total Documents', value: stats?.totalDocuments, icon: FileText, tone: 'blue' as const },
+    { label: 'Pending Approval', value: stats?.pendingApproval, icon: Clock, tone: 'amber' as const },
+    { label: 'Published This Month', value: stats?.publishedThisMonth, icon: CheckCircle2, tone: 'green' as const },
+    { label: 'Due for Review', value: stats?.dueForReview, icon: AlertCircle, tone: 'red' as const },
   ];
 
   return (
@@ -37,6 +37,7 @@ export function HeroSection() {
               label={metric.label}
               value={isLoading || metric.value === undefined ? '—' : metric.value}
               icon={metric.icon}
+              tone={metric.tone}
             />
           ))}
         </div>

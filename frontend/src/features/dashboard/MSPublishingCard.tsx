@@ -19,25 +19,25 @@ const roles = [
     to: '/login?role=author',
     icon: PenLine,
     label: 'Author',
-    description: 'Create and submit documents',
+    description: 'create & manage your drafts',
   },
   {
     to: '/login?role=reviewer',
     icon: Eye,
     label: 'Reviewer',
-    description: 'Review submitted content',
+    description: 'review assigned documents',
   },
   {
     to: '/login?role=approver',
     icon: ShieldCheck,
     label: 'Approver',
-    description: 'Approve for publication',
+    description: 'give final sign-off',
   },
   {
     to: '/login?role=controller',
     icon: Settings2,
     label: 'Controller',
-    description: 'Manage publishing workflow',
+    description: 'full department overview',
   },
 ];
 
@@ -54,7 +54,8 @@ export function MSPublishingCard() {
               <Badge variant="new">New</Badge>
             </div>
             <p className="mt-1 text-sm text-gray-500">
-              Role-based document publishing and approval workflows
+              Create, review, and publish documents through a structured approval workflow. Access is
+              role-based — authors, reviewers, and approvers each see only what is relevant to them.
             </p>
           </div>
         </div>
@@ -74,8 +75,9 @@ export function MSPublishingCard() {
         </div>
       </CardBody>
 
-      <CardFooter>
+      <CardFooter className="flex items-center justify-between">
         <FooterLink to="/login" label="Open MS Publishing" />
+        <span className="text-xs text-gray-400">Role-based access</span>
       </CardFooter>
     </Card>
   );

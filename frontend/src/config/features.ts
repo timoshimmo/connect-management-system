@@ -8,8 +8,8 @@ export const FEATURES = {
    * STAC Drawing Register — a separately-authenticated storefront for
    * documents whose destination is 'Drawing Register' (see
    * document.model.js). Gates: router/index.tsx's drawing-register routes,
-   * the Dashboard's DrawingRegisterCard, and the Read Site's "Drawings and
-   * Diagrams" link.
+   * the Dashboard's OffshoreCard "Engineering" box, and the Read Site's
+   * "Drawings and Diagrams" link.
    */
   drawingRegister: true,
 } as const;

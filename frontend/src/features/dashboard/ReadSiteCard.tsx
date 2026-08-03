@@ -1,8 +1,8 @@
 import {
-  Scale,
-  HardHat,
-  Users,
-  FolderOpen,
+  FileText,
+  ClipboardList,
+  Ruler,
+  Clock,
 } from 'lucide-react';
 import {
   Badge,
@@ -11,14 +11,14 @@ import {
   CardBody,
   CardFooter,
   FooterLink,
-  DepartmentLink,
+  RoleLink,
 } from '@/components/ui';
 
-const departments = [
-  { to: '/read-site/compliance', icon: Scale, label: 'Compliance', count: 24 },
-  { to: '/read-site/hse', icon: HardHat, label: 'HSE', count: 18 },
-  { to: '/read-site/hr', icon: Users, label: 'HR', count: 31 },
-  { to: '/read-site', icon: FolderOpen, label: 'Browse all' },
+const sections = [
+  { to: '/read-site', icon: FileText, label: 'All Policies', description: 'Browse by department' },
+  { to: '/read-site', icon: ClipboardList, label: 'Procedures', description: 'Step-by-step guides' },
+  { to: '/drawing-register/login', icon: Ruler, label: 'Standards & Specs', description: 'Technical references' },
+  { to: '/read-site', icon: Clock, label: 'Recently Updated', description: 'Latest revisions' },
 ];
 
 export function ReadSiteCard() {
@@ -32,21 +32,22 @@ export function ReadSiteCard() {
               <Badge variant="new">New</Badge>
             </div>
             <p className="mt-1 text-sm text-gray-500">
-              Staff-wide access to published documents by department
+              Browse all approved, published management system documents — the single source of truth
+              for all STAC staff.
             </p>
           </div>
         </div>
       </CardHeader>
 
       <CardBody className="flex-1">
-        <div className="flex flex-col gap-2.5">
-          {departments.map((dept) => (
-            <DepartmentLink
-              key={dept.label}
-              to={dept.to}
-              icon={dept.icon}
-              label={dept.label}
-              count={dept.count}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {sections.map((section) => (
+            <RoleLink
+              key={section.label}
+              to={section.to}
+              icon={section.icon}
+              label={section.label}
+              description={section.description}
             />
           ))}
         </div>
