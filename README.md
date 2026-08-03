@@ -6,15 +6,15 @@ engineering/drawing documents (Drawing Register).
 
 ## Architecture
 
-Monorepo with two independent apps, plus a thin Netlify Functions wrapper around the backend:
+Monorepo with two independent apps:
 
 ```
 management_app/
-├── backend/            Node.js + Express + MongoDB (Mongoose) API
-├── frontend/            React + TypeScript + Vite SPA
-├── netlify/functions/   Netlify Function wrapper around backend/src/app.js (see Deployment)
-├── vercel.json          Vercel multi-service config (see Deployment)
-└── netlify.toml         Netlify build/redirects config (see Deployment)
+├── backend/             Node.js + Express + MongoDB (Mongoose) API
+│   └── functions/       Netlify Function wrapper around backend/src/app.js (see Deployment)
+├── frontend/             React + TypeScript + Vite SPA
+├── vercel.json           Vercel multi-service config (see Deployment)
+└── netlify.toml          Netlify build/redirects config (see Deployment)
 ```
 
 ### Tech stack
@@ -122,17 +122,21 @@ fallback rewrite). Set the backend's env vars (see `backend/.env.example`) and
 ### Netlify
 
 - `netlify.toml` — `base: frontend` for the static build (Netlify installs and builds the
-  frontend from there); `[[redirects]]` send `/api/*` to the Netlify Function and everything
-  else to `index.html` for SPA routing.
-- `netlify/functions/api.js` — wraps the exact same `backend/src/app.js` Express app as a
-  Netlify Function via `serverless-http`. No backend code is duplicated or forked between
-  platforms.
-- Root `package.json` — exists only so Netlify installs `serverless-http` for that one
-  function file; it isn't a workspace root, `frontend/` and `backend/` still each have their
-  own independent `package.json`.
-- `bcrypt` is a native module (compiled binary, not pure JS) — `netlify.toml` marks it
-  `external_node_modules` so esbuild ships it as-is (compiled during Netlify's own Linux
-  build) instead of trying to bundle it, which would break at runtime.
+  frontend from there); `command` additionally runs `npm install --prefix ../backend` first,
+  since Netlify's automatic install only covers `base` and the function below needs backend's
+  own `node_modules` present. `[[redirects]]` send `/api/*` to the Netlify Function and
+  everything else to `index.html` for SPA routing.
+- `backend/functions/api.js` — wraps the exact same `backend/src/app.js` Express app as a
+  Netlify Function via `serverless-http` (a real `backend/package.json` dependency). It lives
+  *inside* `backend/`, not in a separate `netlify/functions/` folder, specifically so it
+  resolves against `backend/node_modules` through Node's normal upward module resolution —
+  no second, duplicated dependency list anywhere. No backend code is duplicated or forked
+  between platforms either way.
+- `netlify.toml`'s `external_node_modules` lists every real backend dependency (express,
+  helmet, mongoose, bcrypt, pino, ...) so esbuild copies them from `backend/node_modules`
+  as-is instead of trying to bundle them — several (pino, swagger-ui-express) use dynamic
+  `require()`s esbuild can't statically trace, and bcrypt ships a compiled native binary
+  esbuild can't inline at all.
 - Set the same backend env vars from `backend/.env.example` in the Netlify site's
   **Environment variables**, plus `FRONTEND_URL` set to your Netlify domain.
 - **Known constraint**: Netlify Functions (like most serverless platforms, including Vercel)

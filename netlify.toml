@@ -1,16 +1,44 @@
 [build]
   base = "frontend"
-  command = "npm run build"
+  # Netlify's automatic install only covers `base` (frontend) — backend/'s
+  # own dependencies (needed by the function below) are never installed
+  # unless this command explicitly does it first.
+  command = "npm install --prefix ../backend && npm run build"
   publish = "dist"
 
 [functions]
-  # Relative to `base` above, so this resolves to <repo root>/netlify/functions.
-  directory = "../netlify/functions"
+  # Lives inside backend/ (not netlify/functions/) so it resolves against
+  # backend/node_modules naturally via Node's normal upward module
+  # resolution — see backend/functions/api.js. Relative to `base` above, so
+  # this resolves to <repo root>/backend/functions.
+  directory = "../backend/functions"
   node_bundler = "esbuild"
-  # bcrypt ships a compiled native binary — esbuild can't inline it, so it
-  # must be left external and shipped as-is (compiled during Netlify's own
-  # linux build, matching the Functions runtime).
-  external_node_modules = ["bcrypt"]
+  # Every real npm dependency the Express app touches is marked external so
+  # esbuild copies it as-is from backend/node_modules instead of trying to
+  # bundle it — several of these (pino, swagger-ui-express) use dynamic
+  # requires esbuild can't statically trace, and bcrypt ships a compiled
+  # native binary esbuild can't inline at all.
+  external_node_modules = [
+    "serverless-http",
+    "@aws-sdk/client-s3",
+    "bcrypt",
+    "compression",
+    "cookie-parser",
+    "cors",
+    "dotenv",
+    "express",
+    "express-rate-limit",
+    "helmet",
+    "jsonwebtoken",
+    "mongoose",
+    "multer",
+    "nodemailer",
+    "pino",
+    "pino-http",
+    "swagger-jsdoc",
+    "swagger-ui-express",
+    "zod"
+  ]
 
 # API calls stay same-origin: the frontend's apiClient defaults to a
 # relative `/api` base URL outside dev, so no CORS/origin config changes

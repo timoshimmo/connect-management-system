@@ -1,8 +1,0 @@
-{
-  "name": "management-app-netlify-functions",
-  "private": true,
-  "description": "Root package.json exists only so Netlify's build installs this one dependency for netlify/functions/api.js — frontend and backend remain fully independent apps with their own package.json (see README).",
-  "dependencies": {
-    "serverless-http": "^3.2.0"
-  }
-}
