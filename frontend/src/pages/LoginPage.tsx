@@ -141,7 +141,7 @@ export function LoginPage() {
 
             <p className="mt-5 text-center text-xs text-gray-400">
               Demo accounts share the password "{DEMO_PASSWORD}" 
-              {/* — seeded by management_app/backend's seed script. */}
+              {/* --— seeded by management_app/backend's seed script. */}
             </p>
           </div>
         </div>
