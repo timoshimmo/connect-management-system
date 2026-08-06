@@ -17,13 +17,23 @@ import {
   useReadSiteContactMutation,
 } from '@/features/read-site';
 import { refName } from '@/lib/apiTypes';
-import type { ApiDocumentLocation } from '@/lib/apiTypes';
+import type { ApiDocumentType } from '@/lib/apiTypes';
 
 // Fixed enum, not derived from currently-loaded documents — otherwise a
 // fresh instance with 0 published documents would show an empty "All
 // Types" filter (same bug class as the Discipline filter, see
-// DrawingRegisterPage.tsx).
-const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
+// DrawingRegisterPage.tsx). Mirrors backend/src/modules/documents/document.model.js's DOCUMENT_TYPES.
+const DOCUMENT_TYPES: ApiDocumentType[] = [
+  'Manual',
+  'Policy',
+  'Procedure',
+  'Standard',
+  'Goal',
+  'Org Chart',
+  'Policy Change',
+  'Functional Description',
+  'Form',
+];
 
 function fileTypeFromFormat(format: string | undefined): string {
   if (!format) return 'pdf';
@@ -56,8 +66,11 @@ export function ReadSitePage() {
         approvedBy: refName(doc.approver),
         department: refName(doc.department),
         publishedDate: doc.publishedAt as string,
-        type: doc.location,
-        category: doc.type,
+        // Read Site documents always have a type (enforced for this
+        // destination in document.validation.js) — the `?? ''` is just to
+        // satisfy ApiDocumentType | null.
+        type: doc.type ?? '',
+        location: doc.location,
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
         mongoId: doc._id,
@@ -124,7 +137,7 @@ export function ReadSitePage() {
             departments={departments}
             type={type}
             onTypeChange={setType}
-            types={DOCUMENT_LOCATIONS}
+            types={DOCUMENT_TYPES}
             onSearch={() => {}}
           />
         </div>

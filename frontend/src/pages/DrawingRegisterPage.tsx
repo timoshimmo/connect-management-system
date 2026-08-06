@@ -21,7 +21,9 @@ import {
 import { refName } from '@/lib/apiTypes';
 import type { ApiDocumentLocation } from '@/lib/apiTypes';
 
-// Fixed enum, not derived from currently-loaded documents — see ReadSitePage.tsx.
+// Drawing Register documents have no `type` field (that's Read Site-only —
+// see document.model.js) so, unlike ReadSitePage.tsx, "type" here stays the
+// Location enum, fixed rather than derived from currently-loaded documents.
 const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
 function fileTypeFromFormat(format: string | undefined): string {
@@ -67,7 +69,7 @@ function DrawingRegisterContent() {
         department: refName(doc.department),
         publishedDate: doc.publishedAt as string,
         type: doc.location,
-        category: doc.type,
+        location: doc.location,
         discipline: refName(doc.discipline),
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
