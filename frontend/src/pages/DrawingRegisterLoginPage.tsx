@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, ArrowLeft } from 'lucide-react';
+import { Compass, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAppDispatch } from '@/hooks';
 import { drawingRegisterSessionEstablished } from '@/store/slices/drawingRegisterAuthSlice';
 import { useDrawingRegisterLoginMutation } from '@/features/drawing-register-auth/hooks';
-
-// Matches management_app/backend/src/database/seed.js's DR_USERS.
-const DEMO_ACCOUNTS = [
-  { email: 'e.adeyemi@stac.com', name: 'E. Adeyemi', jobTitle: 'Piping Engineer' },
-  { email: 'h.bassey@stac.com', name: 'H. Bassey', jobTitle: 'Site Engineer' },
-];
-const DEMO_PASSWORD = 'password123';
 
 /**
  * The Drawing Register's own login — a completely separate account system
@@ -24,6 +17,7 @@ export function DrawingRegisterLoginPage() {
   const loginMutation = useDrawingRegisterLoginMutation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   function signIn(loginEmail: string, loginPassword: string) {
     loginMutation.mutate(
@@ -79,14 +73,24 @@ export function DrawingRegisterLoginPage() {
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                autoComplete="current-password"
-                className="mb-5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
-              />
+              <div className="relative mb-5">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
 
               {loginMutation.isError && (
                 <p className="mb-4 text-sm text-red-600">Invalid email or password.</p>
@@ -100,31 +104,6 @@ export function DrawingRegisterLoginPage() {
                 {loginMutation.isPending ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
-
-            <div className="mt-6 border-t border-gray-100 pt-5">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                Quick Sign-In (Demo Accounts)
-              </p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {DEMO_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => signIn(account.email, DEMO_PASSWORD)}
-                    disabled={loginMutation.isPending}
-                    className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2 text-left transition-colors hover:border-brand-300 hover:bg-brand-50/50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <p className="text-[11px] font-bold text-gray-800">{account.name}</p>
-                    <p className="text-[11px] text-gray-500">{account.jobTitle}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <p className="mt-5 text-center text-xs text-gray-400">
-              Demo accounts share the password "{DEMO_PASSWORD}" 
-              {/* — seeded by management_app/backend's seed script. */}
-            </p>
           </div>
         </div>
       </div>

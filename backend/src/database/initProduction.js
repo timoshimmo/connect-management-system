@@ -23,7 +23,6 @@ const DEPARTMENTS = [
   { name: 'Human Resources', code: 'HR' },
   { name: 'Health, Safety & Environment', code: 'HSE' },
   { name: 'Information Technology', code: 'IT' },
-  { name: 'Management of Change', code: 'MOC' },
   { name: 'Operations & Maintenance', code: 'OPS' },
   { name: 'Supply Chain', code: 'SC' },
 ];

@@ -25,6 +25,8 @@ const inputClasses =
 
 interface UsersTableProps {
   users: ApiUser[];
+  /** The signed-in Controller's own user id — disables their own Deactivate action. */
+  currentUserId: string;
   onView: (user: ApiUser) => void;
   onEdit: (user: ApiUser) => void;
   onToggleStatus: (user: ApiUser) => void;
@@ -32,7 +34,7 @@ interface UsersTableProps {
 }
 
 /** Searchable, filterable, sortable, paginated user roster — the Controller's user-management table. */
-export function UsersTable({ users, onView, onEdit, onToggleStatus, headerAction }: UsersTableProps) {
+export function UsersTable({ users, currentUserId, onView, onEdit, onToggleStatus, headerAction }: UsersTableProps) {
   const { data: departments = [] } = useDepartmentsQuery();
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<ApiRole | ''>('');
@@ -221,7 +223,16 @@ export function UsersTable({ users, onView, onEdit, onToggleStatus, headerAction
                     <div className="flex flex-wrap gap-2">
                       <ActionButton onClick={() => onView(u)}>View</ActionButton>
                       <ActionButton onClick={() => onEdit(u)}>Edit</ActionButton>
-                      <ActionButton variant={u.status === 'Active' ? 'danger' : 'primary'} onClick={() => onToggleStatus(u)}>
+                      <ActionButton
+                        variant={u.status === 'Active' ? 'danger' : 'primary'}
+                        disabled={u.status === 'Active' && u.id === currentUserId}
+                        title={
+                          u.status === 'Active' && u.id === currentUserId
+                            ? 'You cannot deactivate your own account'
+                            : undefined
+                        }
+                        onClick={() => onToggleStatus(u)}
+                      >
                         {u.status === 'Active' ? 'Deactivate' : 'Activate'}
                       </ActionButton>
                     </div>

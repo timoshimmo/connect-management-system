@@ -17,6 +17,13 @@ import {
   useReadSiteContactMutation,
 } from '@/features/read-site';
 import { refName } from '@/lib/apiTypes';
+import type { ApiDocumentLocation } from '@/lib/apiTypes';
+
+// Fixed enum, not derived from currently-loaded documents — otherwise a
+// fresh instance with 0 published documents would show an empty "All
+// Types" filter (same bug class as the Discipline filter, see
+// DrawingRegisterPage.tsx).
+const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
 function fileTypeFromFormat(format: string | undefined): string {
   if (!format) return 'pdf';
@@ -95,11 +102,6 @@ export function ReadSitePage() {
     if (departmentParam) setDepartment(departmentParam);
   }, [departmentParam, setDepartment]);
 
-  const documentTypes = useMemo(
-    () => [...new Set(documents.map((doc) => doc.type))],
-    [documents]
-  );
-
   const handleSelectDepartment = (dept: { name: string }) => {
     setDepartment(slugify(dept.name));
   };
@@ -122,7 +124,7 @@ export function ReadSitePage() {
             departments={departments}
             type={type}
             onTypeChange={setType}
-            types={documentTypes}
+            types={DOCUMENT_LOCATIONS}
             onSearch={() => {}}
           />
         </div>

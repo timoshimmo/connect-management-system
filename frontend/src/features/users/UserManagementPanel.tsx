@@ -20,7 +20,12 @@ type Tab = 'ms-publishing' | 'drawing-register';
  * "Do NOT mix Drawing Register users with MS Publishing users") get their
  * own tab and their own table, never merged into one list.
  */
-export function UserManagementPanel() {
+interface UserManagementPanelProps {
+  /** The signed-in Controller's own user id — a Controller can't deactivate themselves. */
+  currentUserId: string;
+}
+
+export function UserManagementPanel({ currentUserId }: UserManagementPanelProps) {
   const [tab, setTab] = useState<Tab>('ms-publishing');
 
   return (
@@ -46,12 +51,16 @@ export function UserManagementPanel() {
         </button>
       </div>
 
-      {tab === 'ms-publishing' ? <MSPublishingUsersPanel /> : <DrawingRegisterUsersPanel />}
+      {tab === 'ms-publishing' ? (
+        <MSPublishingUsersPanel currentUserId={currentUserId} />
+      ) : (
+        <DrawingRegisterUsersPanel />
+      )}
     </div>
   );
 }
 
-function MSPublishingUsersPanel() {
+function MSPublishingUsersPanel({ currentUserId }: UserManagementPanelProps) {
   const { data: users = [], isLoading } = useUsersQuery();
   const updateUser = useUpdateUserMutation();
 
@@ -68,6 +77,7 @@ function MSPublishingUsersPanel() {
       ) : (
         <UsersTable
           users={users}
+          currentUserId={currentUserId}
           onView={setViewUser}
           onEdit={setEditUser}
           onToggleStatus={setToggleUser}
@@ -87,6 +97,7 @@ function MSPublishingUsersPanel() {
       {editUser && (
         <EditUserModal
           user={editUser}
+          isOwnAccount={editUser.id === currentUserId}
           isSubmitting={updateUser.isPending}
           onClose={() => setEditUser(null)}
           onSave={(payload) =>

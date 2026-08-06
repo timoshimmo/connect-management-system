@@ -18,6 +18,8 @@ const ROLE_OPTIONS: { value: ApiRole; label: string }[] = [
 
 interface EditUserModalProps {
   user: ApiUser;
+  /** True when editing the signed-in Controller's own account — they can't deactivate themselves. */
+  isOwnAccount?: boolean;
   onClose: () => void;
   onSave: (payload: Omit<UpdateUserPayload, 'id'>) => void;
   isSubmitting?: boolean;
@@ -43,7 +45,7 @@ function splitName(name: string): { firstName: string; lastName: string } {
  * password, which stays a separate reset/forgot-password concern (per the
  * "do not require password changes when editing" requirement).
  */
-export function EditUserModal({ user, onClose, onSave, isSubmitting }: EditUserModalProps) {
+export function EditUserModal({ user, isOwnAccount, onClose, onSave, isSubmitting }: EditUserModalProps) {
   const { data: departments = [] } = useDepartmentsQuery();
   const { firstName: initialFirst, lastName: initialLast } = splitName(user.name);
 
@@ -199,23 +201,31 @@ export function EditUserModal({ user, onClose, onSave, isSubmitting }: EditUserM
           <div>
             <label className="mb-1 block text-xs font-semibold text-gray-600">Status</label>
             <div className="flex gap-2">
-              {(['Active', 'Inactive'] as ApiUserStatus[]).map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setField('status', status)}
-                  className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                    form.status === status
-                      ? status === 'Active'
-                        ? 'border-brand-700 bg-brand-50 text-brand-800'
-                        : 'border-gray-400 bg-gray-100 text-gray-700'
-                      : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
+              {(['Active', 'Inactive'] as ApiUserStatus[]).map((status) => {
+                const disabled = status === 'Inactive' && isOwnAccount;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    disabled={disabled}
+                    title={disabled ? 'You cannot deactivate your own account' : undefined}
+                    onClick={() => setField('status', status)}
+                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                      form.status === status
+                        ? status === 'Active'
+                          ? 'border-brand-700 bg-brand-50 text-brand-800'
+                          : 'border-gray-400 bg-gray-100 text-gray-700'
+                        : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                );
+              })}
             </div>
+            {isOwnAccount && (
+              <p className="mt-1.5 text-xs text-gray-500">You cannot deactivate your own account.</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2.5 border-t border-gray-100 pt-4">

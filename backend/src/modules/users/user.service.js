@@ -1,5 +1,5 @@
 const { User } = require('./user.model');
-const { NotFoundError, ConflictError } = require('../../common/errors');
+const { NotFoundError, ConflictError, ForbiddenError } = require('../../common/errors');
 const { hashPassword } = require('../../utils/password');
 const { inviteUser } = require('../auth/auth.service');
 
@@ -52,8 +52,16 @@ async function createUser({ name, email, password, role, department, status }) {
  * Deactivating a user here (status: 'Inactive') only blocks future logins
  * (see auth.service.js's login check) — the account and its audit history
  * are never deleted.
+ *
+ * `actingUserId` is the Controller making the request — a Controller can't
+ * deactivate their own account, since that would lock every Controller out
+ * with no one left able to reactivate anyone.
  */
-async function updateUser(id, updates) {
+async function updateUser(id, updates, actingUserId) {
+  if (updates.status === 'Inactive' && actingUserId && String(actingUserId) === String(id)) {
+    throw new ForbiddenError('You cannot deactivate your own account.');
+  }
+
   const user = await User.findById(id);
   if (!user) throw new NotFoundError('User not found');
 

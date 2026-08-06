@@ -26,7 +26,7 @@ const updateRole = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const user = await userService.updateUser(req.params.id, req.body);
+  const user = await userService.updateUser(req.params.id, req.body, req.user.id);
   await recordAudit({
     user: req.user.id,
     action: 'edit',

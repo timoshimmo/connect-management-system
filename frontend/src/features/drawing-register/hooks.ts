@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { drApiRequest, ApiError } from '@/lib/drawingRegisterApiClient';
 import { useToast } from '@/features/toast';
-import type { ApiDepartment, ApiDocument, Paginated } from '@/lib/apiTypes';
+import type { ApiDepartment, ApiDiscipline, ApiDocument, Paginated } from '@/lib/apiTypes';
 import type { ContactControllerPayload } from '@/features/read-site';
 
 /**
@@ -23,6 +23,22 @@ export function useDrawingRegisterDepartmentsQuery(enabled: boolean) {
   return useQuery({
     queryKey: ['drawing-register', 'departments'],
     queryFn: () => drApiRequest<{ items: ApiDepartment[] }>('/drawing-register/departments').then((r) => r.items),
+    enabled,
+  });
+}
+
+/**
+ * Live, Active-only disciplines for the Discipline filter — GET /disciplines
+ * is actually public (no auth required), so this hits it directly rather
+ * than deriving options from whatever documents happen to be loaded (which
+ * would show nothing until at least one Drawing Register document with that
+ * discipline has been published).
+ */
+export function useDrawingRegisterDisciplinesQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: ['drawing-register', 'disciplines'],
+    queryFn: () =>
+      drApiRequest<{ items: ApiDiscipline[] }>('/disciplines?status=Active&limit=100').then((r) => r.items),
     enabled,
   });
 }

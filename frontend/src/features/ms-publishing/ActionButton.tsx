@@ -15,7 +15,7 @@ export function ActionButton({ variant = 'default', className = '', ...props }: 
   return (
     <button
       type="button"
-      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANT_CLASSES[variant]} ${className}`}
       {...props}
     />
   );

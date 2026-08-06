@@ -45,19 +45,20 @@ export default function DocumentRow({ document }) {
         <span className="hidden text-sm text-gray-500 sm:inline">{publishedDate}</span>
         <button
           type="button"
+          disabled={!document.fileUrl}
           onClick={() =>
             openPreview({
               id: document.docId,
               title: document.title,
-              attachedFileName: `${document.docId}.${document.fileType}`,
               fileUrl: document.fileUrl,
               fileFormat: document.fileType,
             })
           }
-          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-800 px-3.5 py-1.5 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+          title={document.fileUrl ? undefined : 'No file has been uploaded for this document yet'}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-800 px-3.5 py-1.5 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:text-gray-400"
         >
           <EyeIcon className="h-4 w-4" aria-hidden="true" />
-          View / Download ({fileLabel})
+          {document.fileUrl ? `View / Download (${fileLabel})` : 'No File Available'}
         </button>
       </div>
     </motion.li>

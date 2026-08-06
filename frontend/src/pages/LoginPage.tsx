@@ -1,35 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogIn, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAppDispatch } from '@/hooks';
 import { sessionEstablished } from '@/store/slices/authSlice';
 import { useLoginMutation } from '@/features/auth/hooks';
-import type { ApiRole } from '@/lib/apiTypes';
-
-const ROLE_LABELS: Record<ApiRole, string> = {
-  author: 'Author',
-  reviewer: 'Reviewer',
-  approver: 'Approver',
-  controller: 'Controller',
-};
-
-/** Matches management_app/backend/src/database/seed.js — all seeded accounts share this password. */
-const DEMO_ACCOUNTS: { role: ApiRole; email: string; name: string }[] = [
-  { role: 'author', email: 'l.sule@stac.com', name: 'L. Sule' },
-  { role: 'reviewer', email: 'a.musa@stac.com', name: 'A. Musa' },
-  { role: 'approver', email: 'f.aliyu@stac.com', name: 'F. Aliyu' },
-  { role: 'controller', email: 'admin@stac.com', name: 'Admin' },
-];
-const DEMO_PASSWORD = 'password123';
 
 export function LoginPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const requestedRole = searchParams.get('role') as ApiRole | null;
   const dispatch = useAppDispatch();
   const loginMutation = useLoginMutation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   function signIn(loginEmail: string, loginPassword: string) {
     loginMutation.mutate(
@@ -90,14 +72,24 @@ export function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                autoComplete="current-password"
-                className="mb-5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
-              />
+              <div className="relative mb-5">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
 
               {loginMutation.isError && (
                 <p className="mb-4 text-sm text-red-600">Invalid email or password.</p>
@@ -111,38 +103,6 @@ export function LoginPage() {
                 {loginMutation.isPending ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
-
-            <div className="mt-6 border-t border-gray-100 pt-5">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                Quick Sign-In (Demo Accounts)
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                {DEMO_ACCOUNTS.map((account) => {
-                  const isRequested = requestedRole === account.role;
-                  return (
-                    <button
-                      key={account.role}
-                      type="button"
-                      onClick={() => signIn(account.email, DEMO_PASSWORD)}
-                      disabled={loginMutation.isPending}
-                      className={`rounded-lg border px-2.5 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                        isRequested
-                          ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600'
-                          : 'border-gray-200 bg-gray-50 hover:border-brand-300 hover:bg-brand-50/50'
-                      }`}
-                    >
-                      <p className="text-[11px] font-bold text-gray-800">{ROLE_LABELS[account.role]}</p>
-                      <p className="text-[11px] text-gray-500">{account.name}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <p className="mt-5 text-center text-xs text-gray-400">
-              Demo accounts share the password "{DEMO_PASSWORD}" 
-              {/* --— seeded by management_app/backend's seed script. */}
-            </p>
           </div>
         </div>
       </div>
