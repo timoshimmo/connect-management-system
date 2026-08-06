@@ -2,6 +2,8 @@ const { Notification } = require('./notification.model');
 const { User } = require('../users/user.model');
 const { NotFoundError } = require('../../common/errors');
 const { sendMail } = require('../../utils/mailer');
+const { renderEmail } = require('../../utils/emailTemplates');
+const env = require('../../config/env');
 const logger = require('../../utils/logger');
 
 /**
@@ -30,8 +32,20 @@ const NOTIFICATION_EMAIL_SUBJECTS = {
   drawing_register_user_created: 'New Drawing Register User',
 };
 
+function titleFor(type) {
+  return NOTIFICATION_EMAIL_SUBJECTS[type] || 'Notification';
+}
+
 function emailSubjectFor(type) {
-  return `STACconnect — ${NOTIFICATION_EMAIL_SUBJECTS[type] || 'Notification'}`;
+  return `STACconnect — ${titleFor(type)}`;
+}
+
+function notificationHtml(type, message) {
+  return renderEmail({
+    title: titleFor(type),
+    bodyText: message,
+    cta: { label: 'Open STACconnect', url: env.frontendUrl },
+  });
 }
 
 async function listForUser(userId) {
@@ -63,7 +77,12 @@ async function notifyUser(userId, { type, message, relatedDocument }) {
   try {
     const user = await User.findById(userId, 'email status');
     if (user && user.status !== 'Inactive') {
-      await sendMail({ to: user.email, subject: emailSubjectFor(type), text: message });
+      await sendMail({
+        to: user.email,
+        subject: emailSubjectFor(type),
+        text: message,
+        html: notificationHtml(type, message),
+      });
     }
   } catch (err) {
     logger.error({ err, userId, type }, 'failed to email notification');
@@ -79,7 +98,12 @@ async function notifyRole(role, { type, message, relatedDocument, excludeUserId 
     await Notification.insertMany(targets.map((u) => ({ user: u._id, type, message, relatedDocument })));
     await Promise.all(
       targets.map((u) =>
-        sendMail({ to: u.email, subject: emailSubjectFor(type), text: message }).catch((err) =>
+        sendMail({
+          to: u.email,
+          subject: emailSubjectFor(type),
+          text: message,
+          html: notificationHtml(type, message),
+        }).catch((err) =>
           logger.error({ err, userId: u._id, type }, 'failed to email role notification')
         )
       )

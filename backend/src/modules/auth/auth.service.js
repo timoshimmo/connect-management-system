@@ -5,6 +5,7 @@ const { hashPassword, comparePassword } = require('../../utils/password');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../../utils/jwt');
 const { UnauthorizedError, BadRequestError } = require('../../common/errors');
 const { sendMail } = require('../../utils/mailer');
+const { renderEmail } = require('../../utils/emailTemplates');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 const env = require('../../config/env');
 
@@ -36,20 +37,29 @@ async function inviteUser(user) {
   user.resetPasswordExpiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS);
   await user.save();
 
-  await sendMail({
-    to: user.email,
-    subject: 'Welcome to STACconnect — set your password',
-    text: `Hi ${user.name},
+  const link = resetLink(rawToken);
+  const text = `Hi ${user.name},
 
 An account has been created for you on STACconnect (role: ${user.role}).
 
 Set your password here (link expires in 7 days):
-${resetLink(rawToken)}
+${link}
 
-If you weren't expecting this, you can ignore this email.`,
+If you weren't expecting this, you can ignore this email.`;
+
+  await sendMail({
+    to: user.email,
+    subject: 'Welcome to STACconnect — set your password',
+    text,
+    html: renderEmail({
+      title: 'Welcome to STACconnect',
+      bodyText: `Hi ${user.name},\n\nAn account has been created for you on STACconnect (role: ${user.role}). Set your password below to get started — this link expires in 7 days.\n\nIf you weren't expecting this, you can safely ignore this email.`,
+      cta: { label: 'Set Your Password', url: link },
+      preheader: 'Set your password to activate your STACconnect account.',
+    }),
   });
 
-  return { rawToken, link: resetLink(rawToken) };
+  return { rawToken, link };
 }
 
 function issueTokens(user) {
@@ -135,13 +145,20 @@ async function forgotPassword(email) {
     user.resetPasswordExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await user.save();
 
+    const link = resetLink(rawToken);
     await sendMail({
       to: user.email,
       subject: 'Reset your STACconnect password',
       text: `Reset your password here (expires in 1 hour):
-${resetLink(rawToken)}
+${link}
 
 If you didn't request this, you can ignore this email.`,
+      html: renderEmail({
+        title: 'Reset Your Password',
+        bodyText: "We received a request to reset your STACconnect password. This link expires in 1 hour.\n\nIf you didn't request this, you can safely ignore this email — your password won't change.",
+        cta: { label: 'Reset Password', url: link },
+        preheader: 'Reset your STACconnect password.',
+      }),
     });
   }
   return { message: 'If an account exists for that email, a reset link has been sent.' };
