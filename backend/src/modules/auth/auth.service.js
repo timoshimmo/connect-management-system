@@ -6,11 +6,50 @@ const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../..
 const { UnauthorizedError, BadRequestError } = require('../../common/errors');
 const { sendMail } = require('../../utils/mailer');
 const { recordAudit } = require('../auditLogs/auditLog.service');
+const env = require('../../config/env');
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+// Invitations get a longer window than a routine password reset — the
+// account may sit unused for a few days before the new hire's first login.
+const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function resetLink(rawToken) {
+  return `${env.frontendUrl}/reset-password/${rawToken}`;
+}
+
+/**
+ * Issues a set-password token for a freshly created account and emails the
+ * invitee a real link, reusing the exact same token mechanism/route as a
+ * routine forgot-password reset (resetPassword() below accepts either).
+ * Called right after user.service.js's createUser — never fails the account
+ * creation itself if the email doesn't send (sendMail already swallows its
+ * own errors), so an admin can always fall back to sharing the link
+ * manually from the audit log / server logs if needed.
+ */
+async function inviteUser(user) {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.resetPasswordTokenHash = hashToken(rawToken);
+  user.resetPasswordExpiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS);
+  await user.save();
+
+  await sendMail({
+    to: user.email,
+    subject: 'Welcome to STACconnect — set your password',
+    text: `Hi ${user.name},
+
+An account has been created for you on STACconnect (role: ${user.role}).
+
+Set your password here (link expires in 7 days):
+${resetLink(rawToken)}
+
+If you weren't expecting this, you can ignore this email.`,
+  });
+
+  return { rawToken, link: resetLink(rawToken) };
 }
 
 function issueTokens(user) {
@@ -99,7 +138,10 @@ async function forgotPassword(email) {
     await sendMail({
       to: user.email,
       subject: 'Reset your STACconnect password',
-      text: `Reset your password using this token: ${rawToken} (expires in 1 hour)`,
+      text: `Reset your password here (expires in 1 hour):
+${resetLink(rawToken)}
+
+If you didn't request this, you can ignore this email.`,
     });
   }
   return { message: 'If an account exists for that email, a reset link has been sent.' };
@@ -124,4 +166,4 @@ async function resetPassword(token, newPassword) {
   return { message: 'Password has been reset.' };
 }
 
-module.exports = { login, refresh, logout, forgotPassword, resetPassword };
+module.exports = { login, refresh, logout, forgotPassword, resetPassword, inviteUser };

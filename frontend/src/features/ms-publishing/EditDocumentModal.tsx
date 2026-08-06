@@ -6,7 +6,17 @@ import { refId } from '@/lib/apiTypes';
 import type { ApiDocument, ApiDocumentDestination, ApiDocumentLocation, ApiDocumentType } from '@/lib/apiTypes';
 import type { UpdateDocumentPayload } from '@/features/documents/hooks';
 
-const DOCUMENT_TYPES: ApiDocumentType[] = ['Policy', 'Procedure', 'Standard', 'Work Instruction', 'Form'];
+const DOCUMENT_TYPES: ApiDocumentType[] = [
+  'Manual',
+  'Policy',
+  'Procedure',
+  'Standard',
+  'Goal',
+  'Org Chart',
+  'Policy Change',
+  'Functional Description',
+  'Form',
+];
 const DOCUMENT_DESTINATIONS: ApiDocumentDestination[] = ['Read Site', 'Drawing Register'];
 const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 

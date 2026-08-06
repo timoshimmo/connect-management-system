@@ -66,7 +66,7 @@ router.use(authenticate);
  *             properties:
  *               title: { type: string, example: "HSE Safety Procedure v1" }
  *               department: { type: string, example: "65f0c2..." }
- *               type: { type: string, enum: [Policy, Procedure, Standard, Work Instruction, Form] }
+ *               type: { type: string, enum: [Manual, Policy, Procedure, Standard, Goal, "Org Chart", "Policy Change", "Functional Description", Form] }
  *               description: { type: string }
  *               location: { type: string, enum: [Onshore, "Offshore – Mayo ABO", Both] }
  *               file: { type: string, format: binary }
@@ -110,7 +110,7 @@ router.post(
  *             properties:
  *               title: { type: string }
  *               department: { type: string }
- *               type: { type: string, enum: [Policy, Procedure, Standard, Work Instruction, Form] }
+ *               type: { type: string, enum: [Manual, Policy, Procedure, Standard, Goal, "Org Chart", "Policy Change", "Functional Description", Form] }
  *               description: { type: string }
  *               location: { type: string, enum: [Onshore, "Offshore – Mayo ABO", Both] }
  *     responses:

@@ -16,6 +16,13 @@ const { connectDatabase } = require('./config/database');
 
 const app = express();
 
+// Both Vercel and Netlify put the app behind a reverse proxy — without this,
+// Express can't see the real client IP from X-Forwarded-For (req.ip falls
+// back to the proxy's own internal address), which breaks per-IP rate
+// limiting (express-rate-limit throws ERR_ERL_UNDEFINED_IP_ADDRESS on an
+// unresolvable IP) and any secure-cookie/HTTPS detection that relies on it.
+app.set('trust proxy', 1);
+
 // This module (not server.js) is what Vercel imports directly as the
 // Function entrypoint — see /vercel.json's services.backend.entrypoint —
 // so the database connection has to be initiated here, not in server.js's

@@ -7,7 +7,17 @@ import { DocumentsTable } from './DocumentsTable';
 import { ActionButton } from './ActionButton';
 import { titleColumn, departmentColumn, archivedByColumn, archiveReasonColumn, dateColumn } from './columns';
 
-const DOCUMENT_TYPES: ApiDocumentType[] = ['Policy', 'Procedure', 'Standard', 'Work Instruction', 'Form'];
+const DOCUMENT_TYPES: ApiDocumentType[] = [
+  'Manual',
+  'Policy',
+  'Procedure',
+  'Standard',
+  'Goal',
+  'Org Chart',
+  'Policy Change',
+  'Functional Description',
+  'Form',
+];
 
 const inputClasses =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/30';

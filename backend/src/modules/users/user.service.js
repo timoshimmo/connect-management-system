@@ -1,6 +1,7 @@
 const { User } = require('./user.model');
 const { NotFoundError, ConflictError } = require('../../common/errors');
 const { hashPassword } = require('../../utils/password');
+const { inviteUser } = require('../auth/auth.service');
 
 async function listUsers({ role } = {}) {
   const filter = {};
@@ -21,6 +22,13 @@ async function updateUserRole(id, role) {
   return user;
 }
 
+/**
+ * The admin-set `password` still becomes the account's real password (the
+ * Create User form is unchanged) — inviteUser() additionally emails the new
+ * user a set-password link, so they never actually need to learn or use
+ * the password the admin typed. A failed invite email never fails account
+ * creation itself (sendMail/inviteUser already swallow their own errors).
+ */
 async function createUser({ name, email, password, role, department, status }) {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw new ConflictError('A user with this email already exists.');
@@ -34,6 +42,7 @@ async function createUser({ name, email, password, role, department, status }) {
     department: department || null,
     status: status || 'Active',
   });
+  await inviteUser(user);
   return getUserById(user._id);
 }
 

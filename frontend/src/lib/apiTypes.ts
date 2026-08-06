@@ -83,7 +83,16 @@ export type ApiDocumentStatus =
   | 'Published'
   | 'Archived';
 
-export type ApiDocumentType = 'Policy' | 'Procedure' | 'Standard' | 'Work Instruction' | 'Form';
+export type ApiDocumentType =
+  | 'Manual'
+  | 'Policy'
+  | 'Procedure'
+  | 'Standard'
+  | 'Goal'
+  | 'Org Chart'
+  | 'Policy Change'
+  | 'Functional Description'
+  | 'Form';
 
 export type ApiDocumentLocation = 'Onshore' | 'Offshore – Mayo ABO' | 'Both';
 
