@@ -127,7 +127,7 @@ function nextDocId(d, departmentCode) {
   const digits = isPolicy ? 4 : 3;
   const baseline = isPolicy ? POLICY_RESERVED_SEQUENCE : 0;
   typeSequence[prefix] = (typeSequence[prefix] ?? baseline) + 1;
-  return `${prefix} ${String(typeSequence[prefix]).padStart(digits, '0')}`;
+  return `${prefix}-${String(typeSequence[prefix]).padStart(digits, '0')}`;
 }
 
 async function seed() {

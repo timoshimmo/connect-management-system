@@ -28,8 +28,8 @@ async function nextDocIdByDepartment(departmentId) {
 }
 
 /**
- * Company numbering convention: `<SMS-XX> <NNN>` per document type,
- * independent of department/year (e.g. "SMS-PR 015", "SMS-PO 0004").
+ * Company numbering convention: `<SMS-XX>-<NNN>` per document type,
+ * independent of department/year (e.g. "SMS-PR-015", "SMS-PO-0004").
  * Policy uses 4-digit numbers and reserves 0001–0003 for documents created
  * manually outside the app — automatic numbering starts at 0004. Every
  * other type uses 3-digit numbers starting at 001. The lookup is scoped to
@@ -45,7 +45,7 @@ async function nextDocIdForType(type) {
   const digits = isPolicy ? 4 : 3;
   const baseline = isPolicy ? POLICY_RESERVED_SEQUENCE : 0;
 
-  const pattern = new RegExp(`^${prefix} (\\d+)$`);
+  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
   const latest = await Document.findOne({ docId: pattern }).sort({ docId: -1 });
   let nextSeq = baseline + 1;
   if (latest) {
@@ -53,7 +53,7 @@ async function nextDocIdForType(type) {
     const seq = match ? Number(match[1]) : NaN;
     if (!Number.isNaN(seq) && seq >= nextSeq) nextSeq = seq + 1;
   }
-  return `${prefix} ${String(nextSeq).padStart(digits, '0')}`;
+  return `${prefix}-${String(nextSeq).padStart(digits, '0')}`;
 }
 
 /** Dispatches to the type-based scheme for Read Site documents, the department-based scheme for Drawing Register ones. */

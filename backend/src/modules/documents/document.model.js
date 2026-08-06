@@ -41,7 +41,7 @@ const DOCUMENT_TYPE_PREFIXES = {
 };
 
 /**
- * SMS-PO 0001–0003 are reserved for special company documents created
+ * SMS-PO-0001–0003 are reserved for special company documents created
  * manually later — automatic Policy numbering starts at 0004. Every other
  * type starts at 001. See nextDocIdForType.
  */
