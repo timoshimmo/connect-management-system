@@ -50,6 +50,7 @@ const USERS = [
   { name: 'J. Adamu', email: 'j.adamu@stac.com', role: 'author' },
 ];
 
+
 // Drawing Register viewer accounts — a separate account system from the
 // User collection above (see drawingRegisterUser.model.js). They can only
 // sign in and browse whatever Documents were routed to the Drawing Register.
