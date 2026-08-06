@@ -9,7 +9,7 @@ module.exports = {
   nodeEnv: required('NODE_ENV', 'development'),
   port: Number(required('PORT', 5000)),
   frontendUrl: required('FRONTEND_URL', 'http://localhost:5173'),
-  mongodbUri: required('MONGODB_URI', 'mongodb://localhost:27017/management_app'),
+  mongodbUri: required('MONGODB_URI', 'mongodb+srv://bolajistephen72_db_user:NJZWSFwXso2ic8nM@management.u3zxlwl.mongodb.net/management_app?retryWrites=true&w=majority&appName=management'),
   jwt: {
     accessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret'),
     refreshSecret: required('JWT_REFRESH_SECRET', 'dev-refresh-secret'),
