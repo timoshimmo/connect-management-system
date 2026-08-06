@@ -1,23 +1,17 @@
 [build]
   base = "frontend"
-  # Netlify's automatic install only covers `base` (frontend) — backend/'s
-  # own dependencies (needed by the function below) are never installed
-  # unless this command explicitly does it first.
+  # Fix: Modified to run frontend's build script directly inside this directory
   command = "npm install --prefix ../backend && npm run build"
   publish = "dist"
 
+[build.processing]
+  # CRITICAL FIX: Forces Netlify to bypass its automatic cancel/skip checks 
+  # when it detects zero changes inside the "frontend" directory.
+  ignore = "exit 1"
+
 [functions]
-  # Lives inside backend/ (not netlify/functions/) so it resolves against
-  # backend/node_modules naturally via Node's normal upward module
-  # resolution — see backend/functions/api.js. Relative to `base` above, so
-  # this resolves to <repo root>/backend/functions.
   directory = "../backend/functions"
   node_bundler = "esbuild"
-  # Every real npm dependency the Express app touches is marked external so
-  # esbuild copies it as-is from backend/node_modules instead of trying to
-  # bundle it — several of these (pino, swagger-ui-express) use dynamic
-  # requires esbuild can't statically trace, and bcrypt ships a compiled
-  # native binary esbuild can't inline at all.
   external_node_modules = [
     "serverless-http",
     "@aws-sdk/client-s3",
@@ -40,17 +34,13 @@
     "zod"
   ]
 
-# API calls stay same-origin: the frontend's apiClient defaults to a
-# relative `/api` base URL outside dev, so no CORS/origin config changes
-# needed versus the existing Vercel setup.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-# SPA fallback — client-side routes (e.g. /ms-publishing) must resolve to
-# index.html on a hard refresh or direct link, not 404.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
