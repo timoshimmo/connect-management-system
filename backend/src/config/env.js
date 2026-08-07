@@ -24,11 +24,11 @@ module.exports = {
     publicBaseUrl: required('R2_PUBLIC_BASE_URL', ''),
   },
   smtp: {
-    host: required('SMTP_HOST', ''),
+    host: required('SMTP_HOST', 'smtp.zoho.com'),
     port: Number(required('SMTP_PORT', 465)),
     secure: required('SMTP_SECURE', 'true') === 'true',
-    user: required('SMTP_USER', ''),
-    pass: required('SMTP_PASS', ''),
-    fromAddress: required('SMTP_FROM', ''),
+    user: required('SMTP_USER', 'noreply.stacacademy@stacmarine.com'),
+    pass: required('SMTP_PASS', 'gtW3A7zRkApd'),
+    fromAddress: required('SMTP_FROM', 'noreply.stacacademy@stacmarine.com'),
   },
 };
