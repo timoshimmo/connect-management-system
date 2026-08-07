@@ -125,7 +125,77 @@ export function createApiClient(config: ApiClientConfig) {
     return data as T;
   }
 
-  return { apiRequest, apiUpload, refreshAccessToken };
+  /**
+   * Same auth/refresh-retry behavior as apiUpload, but over XHR instead of
+   * fetch so upload progress is observable — fetch has no upload-progress
+   * event. Only used by features that need a progress bar (bulk import);
+   * every other upload still goes through the simpler apiUpload above.
+   */
+  function apiUploadWithProgress<T>(
+    path: string,
+    formData: FormData,
+    onProgress?: (percent: number) => void
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const send = (isRetry = false) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BASE_URL}${path}`);
+        xhr.withCredentials = true;
+        const token = config.getAccessToken();
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+
+        xhr.onload = async () => {
+          if (xhr.status === 401 && !isRetry) {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) return send(true);
+          }
+
+          const contentType = xhr.getResponseHeader('content-type') ?? '';
+          const data = contentType.includes('application/json') && xhr.responseText ? JSON.parse(xhr.responseText) : undefined;
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data as T);
+          } else {
+            const message = (data && (data.message || data.error)) || xhr.statusText;
+            reject(new ApiError(message, xhr.status));
+          }
+        };
+
+        xhr.onerror = () => reject(new ApiError('Network error', 0));
+        xhr.send(formData);
+      };
+      send();
+    });
+  }
+
+  /** Fetches a binary response (e.g. a generated .xlsx) as a Blob, with the same auth header as every other call here. */
+  async function apiDownload(path: string): Promise<Blob> {
+    const token = config.getAccessToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${BASE_URL}${path}`, { headers, credentials: 'include' });
+
+    if (res.status === 401) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) return apiDownload(path);
+    }
+
+    if (!res.ok) {
+      const message = res.headers.get('content-type')?.includes('application/json')
+        ? (await res.json()).message ?? res.statusText
+        : res.statusText;
+      throw new ApiError(message, res.status);
+    }
+
+    return res.blob();
+  }
+
+  return { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, refreshAccessToken };
 }
 
 /** MS Publishing's client — unchanged behavior/signature from before this was factored out. */
@@ -136,4 +206,4 @@ const msPublishingClient = createApiClient({
   authPathPrefix: '/auth/',
 });
 
-export const { apiRequest, apiUpload, refreshAccessToken } = msPublishingClient;
+export const { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, refreshAccessToken } = msPublishingClient;

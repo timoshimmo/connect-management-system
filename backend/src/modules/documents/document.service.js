@@ -125,6 +125,13 @@ async function getDocumentById(id) {
   return doc;
 }
 
+/**
+ * `docId`/`status`/`publishedAt`/`nextReviewDate`/`versionNumber`/`changeNote`
+ * are all optional and only ever passed by bulkImport.service.js — every
+ * other caller (the single-document "New Document" modal) omits them and
+ * gets today's exact behavior (auto-numbered, Draft, "1.0", "Initial
+ * upload") unchanged.
+ */
 async function createDocument({
   title,
   department,
@@ -138,16 +145,26 @@ async function createDocument({
   revision,
   authorId,
   file,
+  docId: explicitDocId,
+  status,
+  publishedAt,
+  nextReviewDate,
+  versionNumber,
+  changeNote,
 }) {
-  // Retries a couple of times on a docId collision (e.g. a concurrent create
-  // landing on the same next-sequence number) rather than failing the whole
-  // request outright.
+  const publishedFields =
+    status === 'Published'
+      ? { publishedAt: publishedAt || new Date(), nextReviewDate: nextReviewDate || new Date(Date.now() + ONE_YEAR_MS) }
+      : {};
+
   let doc;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const docId = await nextDocId({ destination, department, type });
+  if (explicitDocId) {
+    // A caller-supplied id (bulk import preserving a historical document
+    // number) — a collision here is a genuine conflict, not the benign
+    // auto-numbering race the retry loop below exists to absorb.
     try {
       doc = await Document.create({
-        docId,
+        docId: explicitDocId,
         title,
         department,
         type: type || null,
@@ -159,18 +176,47 @@ async function createDocument({
         area: area || '',
         revision: revision || '',
         author: authorId,
-        status: 'Draft',
+        status: status || 'Draft',
+        ...publishedFields,
       });
-      break;
     } catch (err) {
-      if (err.code === 11000 && attempt < 2) continue;
+      if (err.code === 11000) throw new ConflictError(`Document ID "${explicitDocId}" is already in use`);
       throw err;
+    }
+  } else {
+    // Retries a couple of times on a docId collision (e.g. a concurrent
+    // create landing on the same next-sequence number) rather than failing
+    // the whole request outright.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const generatedDocId = await nextDocId({ destination, department, type });
+      try {
+        doc = await Document.create({
+          docId: generatedDocId,
+          title,
+          department,
+          type: type || null,
+          description: description || '',
+          location: location || 'Onshore',
+          destination,
+          drawingNumber: drawingNumber || '',
+          discipline: discipline || null,
+          area: area || '',
+          revision: revision || '',
+          author: authorId,
+          status: status || 'Draft',
+          ...publishedFields,
+        });
+        break;
+      } catch (err) {
+        if (err.code === 11000 && attempt < 2) continue;
+        throw err;
+      }
     }
   }
 
   if (file) {
     try {
-      await addVersion(doc._id, { file, changeNote: 'Initial upload', uploadedBy: authorId });
+      await addVersion(doc._id, { file, changeNote: changeNote || 'Initial upload', uploadedBy: authorId, versionNumber });
     } catch (err) {
       // The upload failed (e.g. R2 unreachable/misconfigured) — don't
       // leave an empty, file-less draft behind. Roll back the document so
@@ -183,12 +229,14 @@ async function createDocument({
   return getDocumentById(doc._id);
 }
 
-async function addVersion(id, { file, changeNote, uploadedBy }) {
+async function addVersion(id, { file, changeNote, uploadedBy, versionNumber: versionNumberOverride }) {
   const doc = await Document.findById(id).populate('department', 'code');
   if (!doc) throw new NotFoundError('Document not found');
 
   const versionCount = await DocumentVersion.countDocuments({ document: doc._id });
-  const versionNumber = `${versionCount + 1}.0`;
+  // Override lets bulk import carry over a historical document's real
+  // version label (e.g. "3.2") instead of always starting at "1.0".
+  const versionNumber = versionNumberOverride || `${versionCount + 1}.0`;
   const format = resolveExtension(file);
   const key = `documents/${doc.department.code.toLowerCase()}/${doc.docId}-v${versionNumber}.${format}`;
 

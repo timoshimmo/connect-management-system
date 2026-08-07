@@ -27,6 +27,7 @@ import { isDocumentOverdue, isPublishedThisMonth } from '@/features/documents/ut
 import { UserManagementPanel } from '@/features/users';
 import { DepartmentManagementPanel } from '@/features/departments/DepartmentManagementPanel';
 import { DisciplineManagementPanel } from '@/features/disciplines/DisciplineManagementPanel';
+import { BulkUploadPanel } from '@/features/bulk-upload';
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
 import { ROLES, ViewKey, CountKey } from '@/data/roles';
@@ -666,6 +667,12 @@ function MSPublishingContent() {
     content = (
       <RoleGuard allow={['controller']} role={user.role}>
         <DisciplineManagementPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'bulkUpload') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <BulkUploadPanel />
       </RoleGuard>
     );
   } else if (view === 'dept' && activeFilter) {
