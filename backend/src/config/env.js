@@ -39,7 +39,7 @@ module.exports = {
     accountId: required('R2_ACCOUNT_ID', ''),
     accessKeyId: required('R2_ACCESS_KEY_ID', ''),
     secretAccessKey: required('R2_SECRET_ACCESS_KEY', ''),
-    bucketName: required('R2_BUCKET_NAME', ''),
+    bucketName: required('R2_BUCKET_NAME', 'bucket_name'),
     publicBaseUrl: required('R2_PUBLIC_BASE_URL', ''),
   },
   smtp: {
