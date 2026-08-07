@@ -3,6 +3,10 @@ import {
   ClipboardList,
   Ruler,
   Clock,
+  BookOpen,
+  FileSearch,
+  RefreshCw,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   Badge,
@@ -15,10 +19,24 @@ import {
 } from '@/components/ui';
 
 const sections = [
-  { to: '/read-site', icon: FileText, label: 'All Policies', description: 'Browse by department' },
-  { to: '/read-site', icon: ClipboardList, label: 'Procedures', description: 'Step-by-step guides' },
+  { to: '/read-site?type=Policy', icon: FileText, label: 'All Policies', description: 'Browse by department' },
+  { to: '/read-site?type=Procedure', icon: ClipboardList, label: 'Procedures', description: 'Step-by-step guides' },
   { to: '/drawing-register/login', icon: Ruler, label: 'Standards & Specs', description: 'Technical references' },
   { to: '/read-site', icon: Clock, label: 'Recently Updated', description: 'Latest revisions' },
+  { to: '/read-site?type=Manual', icon: BookOpen, label: 'Manuals', description: 'Reference manuals' },
+  {
+    to: `/read-site?type=${encodeURIComponent('Functional Description')}`,
+    icon: FileSearch,
+    label: 'Functional Descriptions',
+    description: 'Role & function references',
+  },
+  {
+    to: `/read-site?type=${encodeURIComponent('Policy Change')}`,
+    icon: RefreshCw,
+    label: 'Policy Changes',
+    description: 'Recent policy updates',
+  },
+  { to: '/read-site?type=Form', icon: ClipboardCheck, label: 'Forms', description: 'Fillable templates' },
 ];
 
 export function ReadSiteCard() {

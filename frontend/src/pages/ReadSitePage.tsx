@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import PageHeader from '../components/ReadSite/PageHeader';
 import SearchBar from '../components/ReadSite/SearchBar';
@@ -53,6 +53,8 @@ function slugify(name: string): string {
  */
 export function ReadSitePage() {
   const { department: departmentParam } = useParams<{ department?: string }>();
+  const [searchParams] = useSearchParams();
+  const typeParam = searchParams.get('type');
   const { data: publishedDocs = [], isLoading } = useReadSitePublishedDocumentsQuery();
   const { data: apiDepartments = [] } = useReadSiteDepartmentsQuery();
 
@@ -114,6 +116,12 @@ export function ReadSitePage() {
   useEffect(() => {
     if (departmentParam) setDepartment(departmentParam);
   }, [departmentParam, setDepartment]);
+
+  // Dashboard tiles (e.g. "All Policies") deep-link here with ?type=Policy —
+  // same sync-on-change reasoning as the department param above.
+  useEffect(() => {
+    if (typeParam) setType(typeParam);
+  }, [typeParam, setType]);
 
   const handleSelectDepartment = (dept: { name: string }) => {
     setDepartment(slugify(dept.name));
