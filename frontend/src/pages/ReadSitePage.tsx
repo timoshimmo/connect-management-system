@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import PageHeader from '../components/ReadSite/PageHeader';
 import SearchBar from '../components/ReadSite/SearchBar';
@@ -17,6 +17,23 @@ import {
   useReadSiteContactMutation,
 } from '@/features/read-site';
 import { refName } from '@/lib/apiTypes';
+import type { ApiDocumentType } from '@/lib/apiTypes';
+
+// Fixed enum, not derived from currently-loaded documents — otherwise a
+// fresh instance with 0 published documents would show an empty "All
+// Types" filter (same bug class as the Discipline filter, see
+// DrawingRegisterPage.tsx). Mirrors backend/src/modules/documents/document.model.js's DOCUMENT_TYPES.
+const DOCUMENT_TYPES: ApiDocumentType[] = [
+  'Manual',
+  'Policy',
+  'Procedure',
+  'Standard',
+  'Goal',
+  'Org Chart',
+  'Policy Change',
+  'Functional Description',
+  'Form',
+];
 
 function fileTypeFromFormat(format: string | undefined): string {
   if (!format) return 'pdf';
@@ -36,6 +53,8 @@ function slugify(name: string): string {
  */
 export function ReadSitePage() {
   const { department: departmentParam } = useParams<{ department?: string }>();
+  const [searchParams] = useSearchParams();
+  const typeParam = searchParams.get('type');
   const { data: publishedDocs = [], isLoading } = useReadSitePublishedDocumentsQuery();
   const { data: apiDepartments = [] } = useReadSiteDepartmentsQuery();
 
@@ -49,8 +68,11 @@ export function ReadSitePage() {
         approvedBy: refName(doc.approver),
         department: refName(doc.department),
         publishedDate: doc.publishedAt as string,
-        type: doc.location,
-        category: doc.type,
+        // Read Site documents always have a type (enforced for this
+        // destination in document.validation.js) — the `?? ''` is just to
+        // satisfy ApiDocumentType | null.
+        type: doc.type ?? '',
+        location: doc.location,
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
         mongoId: doc._id,
@@ -95,10 +117,11 @@ export function ReadSitePage() {
     if (departmentParam) setDepartment(departmentParam);
   }, [departmentParam, setDepartment]);
 
-  const documentTypes = useMemo(
-    () => [...new Set(documents.map((doc) => doc.type))],
-    [documents]
-  );
+  // Dashboard tiles (e.g. "All Policies") deep-link here with ?type=Policy —
+  // same sync-on-change reasoning as the department param above.
+  useEffect(() => {
+    if (typeParam) setType(typeParam);
+  }, [typeParam, setType]);
 
   const handleSelectDepartment = (dept: { name: string }) => {
     setDepartment(slugify(dept.name));
@@ -122,7 +145,7 @@ export function ReadSitePage() {
             departments={departments}
             type={type}
             onTypeChange={setType}
-            types={documentTypes}
+            types={DOCUMENT_TYPES}
             onSearch={() => {}}
           />
         </div>

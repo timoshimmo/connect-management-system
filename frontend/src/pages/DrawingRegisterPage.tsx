@@ -15,9 +15,16 @@ import { useAppSelector } from '@/hooks';
 import {
   useDrawingRegisterDocumentsQuery,
   useDrawingRegisterDepartmentsQuery,
+  useDrawingRegisterDisciplinesQuery,
   useDrawingRegisterContactMutation,
 } from '@/features/drawing-register';
 import { refName } from '@/lib/apiTypes';
+import type { ApiDocumentLocation } from '@/lib/apiTypes';
+
+// Drawing Register documents have no `type` field (that's Read Site-only —
+// see document.model.js) so, unlike ReadSitePage.tsx, "type" here stays the
+// Location enum, fixed rather than derived from currently-loaded documents.
+const DOCUMENT_LOCATIONS: ApiDocumentLocation[] = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
 function fileTypeFromFormat(format: string | undefined): string {
   if (!format) return 'pdf';
@@ -49,6 +56,7 @@ function DrawingRegisterContent() {
   const isAuthenticated = useAppSelector((state) => state.drawingRegisterAuth.isAuthenticated);
   const { data: publishedDocs = [], isLoading } = useDrawingRegisterDocumentsQuery(isAuthenticated);
   const { data: apiDepartments = [] } = useDrawingRegisterDepartmentsQuery(isAuthenticated);
+  const { data: apiDisciplines = [] } = useDrawingRegisterDisciplinesQuery(isAuthenticated);
 
   const documents = useMemo(
     () =>
@@ -61,7 +69,7 @@ function DrawingRegisterContent() {
         department: refName(doc.department),
         publishedDate: doc.publishedAt as string,
         type: doc.location,
-        category: doc.type,
+        location: doc.location,
         discipline: refName(doc.discipline),
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
@@ -99,11 +107,10 @@ function DrawingRegisterContent() {
     clearFilters,
   } = useDocumentFilters(documents, 'all');
 
-  const documentTypes = useMemo(() => [...new Set(documents.map((doc) => doc.type))], [documents]);
-  const disciplineOptions = useMemo(
-    () => [...new Set(documents.map((doc) => doc.discipline).filter((d) => d && d !== '—'))],
-    [documents]
-  );
+  // Live from the Discipline collection, not derived from documents —
+  // otherwise a fresh instance with no published drawings yet would show an
+  // empty filter even though disciplines exist (used when creating documents).
+  const disciplineOptions = useMemo(() => apiDisciplines.map((d) => d.name), [apiDisciplines]);
 
   const handleSelectDepartment = (dept: { name: string }) => {
     setDepartment(slugify(dept.name));
@@ -131,7 +138,7 @@ function DrawingRegisterContent() {
             departments={departments}
             type={type}
             onTypeChange={setType}
-            types={documentTypes}
+            types={DOCUMENT_LOCATIONS}
             discipline={discipline}
             onDisciplineChange={setDiscipline}
             disciplines={disciplineOptions}

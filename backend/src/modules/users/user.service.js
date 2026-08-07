@@ -1,6 +1,7 @@
 const { User } = require('./user.model');
-const { NotFoundError, ConflictError } = require('../../common/errors');
+const { NotFoundError, ConflictError, ForbiddenError } = require('../../common/errors');
 const { hashPassword } = require('../../utils/password');
+const { inviteUser } = require('../auth/auth.service');
 
 async function listUsers({ role } = {}) {
   const filter = {};
@@ -21,6 +22,13 @@ async function updateUserRole(id, role) {
   return user;
 }
 
+/**
+ * The admin-set `password` still becomes the account's real password (the
+ * Create User form is unchanged) — inviteUser() additionally emails the new
+ * user a set-password link, so they never actually need to learn or use
+ * the password the admin typed. A failed invite email never fails account
+ * creation itself (sendMail/inviteUser already swallow their own errors).
+ */
 async function createUser({ name, email, password, role, department, status }) {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw new ConflictError('A user with this email already exists.');
@@ -34,6 +42,7 @@ async function createUser({ name, email, password, role, department, status }) {
     department: department || null,
     status: status || 'Active',
   });
+  await inviteUser(user);
   return getUserById(user._id);
 }
 
@@ -43,8 +52,16 @@ async function createUser({ name, email, password, role, department, status }) {
  * Deactivating a user here (status: 'Inactive') only blocks future logins
  * (see auth.service.js's login check) — the account and its audit history
  * are never deleted.
+ *
+ * `actingUserId` is the Controller making the request — a Controller can't
+ * deactivate their own account, since that would lock every Controller out
+ * with no one left able to reactivate anyone.
  */
-async function updateUser(id, updates) {
+async function updateUser(id, updates, actingUserId) {
+  if (updates.status === 'Inactive' && actingUserId && String(actingUserId) === String(id)) {
+    throw new ForbiddenError('You cannot deactivate your own account.');
+  }
+
   const user = await User.findById(id);
   if (!user) throw new NotFoundError('User not found');
 

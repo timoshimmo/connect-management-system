@@ -25,14 +25,14 @@ function getTransporter() {
  * deliberately doesn't reveal whether the send "worked" to avoid leaking
  * whether an email address has an account.
  */
-async function sendMail({ to, subject, text }) {
+async function sendMail({ to, subject, text, html }) {
   const transport = getTransporter();
   if (!transport) {
     logger.info({ to, subject, text }, 'mailer: email not actually sent (no SMTP configured)');
     return;
   }
   try {
-    await transport.sendMail({ from: env.smtp.fromAddress || env.smtp.user, to, subject, text });
+    await transport.sendMail({ from: env.smtp.fromAddress || env.smtp.user, to, subject, text, html });
   } catch (err) {
     logger.error({ err, to, subject }, 'mailer: failed to send email');
   }

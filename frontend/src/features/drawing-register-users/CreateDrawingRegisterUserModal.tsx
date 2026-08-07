@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import type { ApiUserStatus } from '@/lib/apiTypes';
 import type { CreateDrawingRegisterUserPayload } from './hooks';
 
@@ -33,6 +33,8 @@ const INITIAL_STATE: FormState = {
 export function CreateDrawingRegisterUserModal({ onClose, onCreate, isSubmitting }: CreateDrawingRegisterUserModalProps) {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -149,26 +151,46 @@ export function CreateDrawingRegisterUserModal({ onClose, onCreate, isSubmitting
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-600">Password *</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => setField('password', e.target.value)}
-                placeholder="At least 8 characters"
-                autoComplete="new-password"
-                className={fieldClasses('password')}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setField('password', e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  className={`${fieldClasses('password')} pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-600">Confirm Password *</label>
-              <input
-                type="password"
-                value={form.confirmPassword}
-                onChange={(e) => setField('confirmPassword', e.target.value)}
-                placeholder="Re-enter password"
-                autoComplete="new-password"
-                className={fieldClasses('confirmPassword')}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={(e) => setField('confirmPassword', e.target.value)}
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                  className={`${fieldClasses('confirmPassword')} pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>}
             </div>
           </div>

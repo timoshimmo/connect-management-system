@@ -14,14 +14,13 @@ export interface PreviewSource {
 
 /**
  * Minimal shape any document/drawing record can satisfy to be previewed.
- * `fileUrl`/`fileFormat` (a real Cloudinary version) take priority when
- * present; `attachedFileName` alone falls back to the bundled demo sample so
- * the modal still works for records with no uploaded file yet.
+ * `fileUrl` must be a real uploaded version's URL — callers should not
+ * invoke openPreview at all when a record has no file yet (see
+ * DocumentRow.jsx, which disables its preview button in that case).
  */
 export interface PreviewableRecord {
   id: string;
   title: string;
-  attachedFileName: string | null;
   fileUrl?: string | null;
   fileFormat?: string | null;
 }

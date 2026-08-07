@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 
 interface Document {
+  /** Document type (Policy, Procedure, ...) — what the "All Types" dropdown filters on. */
   type: string;
+  /** Onshore/Offshore/Both — what the Recently Updated/Onshore/Offshore tabs filter on. */
+  location: string;
   department: string;
   title: string;
   docId: string;
@@ -52,11 +55,11 @@ export function useDocumentFilters(
   const filteredDocuments = useMemo(() => {
     let result: Document[] = [...allDocuments];
 
-    const tabType = TAB_TYPE_MAP[activeTab];
-    if (tabType) {
+    const tabLocation = TAB_TYPE_MAP[activeTab];
+    if (tabLocation) {
       // A document whose location is "Both" belongs on both the Onshore and
       // Offshore tabs, not neither — plain equality would silently exclude it.
-      result = result.filter((doc) => doc.type === tabType || doc.type === 'Both');
+      result = result.filter((doc) => doc.location === tabLocation || doc.location === 'Both');
     }
 
     if (department !== "all") {

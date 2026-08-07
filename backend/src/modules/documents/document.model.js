@@ -10,7 +10,42 @@ const DOCUMENT_STATUSES = [
   'Archived',
 ];
 
-const DOCUMENT_TYPES = ['Policy', 'Procedure', 'Standard', 'Work Instruction', 'Form'];
+const DOCUMENT_TYPES = [
+  'Manual',
+  'Policy',
+  'Procedure',
+  'Standard',
+  'Goal',
+  'Org Chart',
+  'Policy Change',
+  'Functional Description',
+  'Form',
+];
+
+/**
+ * Doc ID prefix per type (Read Site documents only — Drawing Register
+ * documents use their own user-entered `drawingNumber` field instead and
+ * keep the department/year docId scheme, since they have no `type`). See
+ * document.service.js's nextDocIdForType.
+ */
+const DOCUMENT_TYPE_PREFIXES = {
+  Manual: 'SMS-MP',
+  Policy: 'SMS-PO',
+  Procedure: 'SMS-PR',
+  Standard: 'SMS-ST',
+  Goal: 'SMS-GL',
+  'Org Chart': 'SMS-OC',
+  'Policy Change': 'SMS-PC',
+  'Functional Description': 'SMS-FD',
+  Form: 'SMS-FR',
+};
+
+/**
+ * SMS-PO-0001–0003 are reserved for special company documents created
+ * manually later — automatic Policy numbering starts at 0004. Every other
+ * type starts at 001. See nextDocIdForType.
+ */
+const POLICY_RESERVED_SEQUENCE = 3;
 
 const DOCUMENT_LOCATIONS = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
@@ -66,4 +101,12 @@ documentSchema.index({ title: 'text', docId: 'text' });
 
 const Document = mongoose.model('Document', documentSchema);
 
-module.exports = { Document, DOCUMENT_STATUSES, DOCUMENT_TYPES, DOCUMENT_LOCATIONS, DOCUMENT_DESTINATIONS };
+module.exports = {
+  Document,
+  DOCUMENT_STATUSES,
+  DOCUMENT_TYPES,
+  DOCUMENT_TYPE_PREFIXES,
+  POLICY_RESERVED_SEQUENCE,
+  DOCUMENT_LOCATIONS,
+  DOCUMENT_DESTINATIONS,
+};

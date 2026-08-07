@@ -255,7 +255,6 @@ function MSPublishingContent() {
         openPreview({
           id: doc.docId,
           title: doc.title,
-          attachedFileName: null,
           fileUrl: doc.currentVersion.file.url,
           fileFormat: doc.currentVersion.file.format,
         })
@@ -654,7 +653,7 @@ function MSPublishingContent() {
   } else if (view === 'authors') {
     content = (
       <RoleGuard allow={['controller']} role={user.role}>
-        <UserManagementPanel />
+        <UserManagementPanel currentUserId={user.id} />
       </RoleGuard>
     );
   } else if (view === 'departments') {

@@ -121,7 +121,6 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
                 openPreview({
                   id: doc.docId,
                   title: doc.title,
-                  attachedFileName: null,
                   fileUrl: currentVersion.file.url,
                   fileFormat: currentVersion.file.format,
                 })

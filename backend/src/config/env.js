@@ -5,14 +5,33 @@ function required(name, fallback) {
   return value;
 }
 
+const nodeEnv = required('NODE_ENV', 'development');
+const jwtAccessSecret = required('JWT_ACCESS_SECRET', 'dev-access-secret');
+const jwtRefreshSecret = required('JWT_REFRESH_SECRET', 'dev-refresh-secret');
+
+// The dev fallback secrets above are fine for local work, but silently
+// accepting them in production would mean every JWT this server issues is
+// forgeable by anyone who's read this file — fail loudly at startup
+// instead of ever running with a well-known signing secret.
+if (nodeEnv === 'production') {
+  const insecure = [];
+  if (jwtAccessSecret === 'dev-access-secret') insecure.push('JWT_ACCESS_SECRET');
+  if (jwtRefreshSecret === 'dev-refresh-secret') insecure.push('JWT_REFRESH_SECRET');
+  if (insecure.length > 0) {
+    throw new Error(
+      `Refusing to start with NODE_ENV=production while using insecure default value(s) for: ${insecure.join(', ')}. Set real secrets in the environment.`
+    );
+  }
+}
+
 module.exports = {
-  nodeEnv: required('NODE_ENV', 'development'),
+  nodeEnv,
   port: Number(required('PORT', 5000)),
   frontendUrl: required('FRONTEND_URL', 'http://localhost:5173'),
   mongodbUri: required('MONGODB_URI', 'mongodb+srv://bolajistephen72_db_user:NJZWSFwXso2ic8nM@management.u3zxlwl.mongodb.net/management_app?retryWrites=true&w=majority&appName=management'),
   jwt: {
-    accessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret'),
-    refreshSecret: required('JWT_REFRESH_SECRET', 'dev-refresh-secret'),
+    accessSecret: jwtAccessSecret,
+    refreshSecret: jwtRefreshSecret,
     accessExpiresIn: required('JWT_ACCESS_EXPIRES_IN', '15m'),
     refreshExpiresIn: required('JWT_REFRESH_EXPIRES_IN', '30d'),
   },
