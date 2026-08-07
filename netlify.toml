@@ -3,11 +3,7 @@
   # Fix: Modified to run frontend's build script directly inside this directory
   command = "npm install --prefix ../backend && npm run build"
   publish = "dist"
-
-[build.processing]
-  # CRITICAL FIX: Forces Netlify to bypass its automatic cancel/skip checks 
-  # when it detects zero changes inside the "frontend" directory.
-  ignore = "exit 1"
+  ignore = "git diff --quiet HEAD^ HEAD -- frontend/ backend/functions/ && exit 0 || exit 1"
 
 [functions]
   directory = "../backend/functions"
