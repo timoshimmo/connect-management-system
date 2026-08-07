@@ -13,6 +13,7 @@ const AUDIT_ACTIONS = [
   'preview',
   'delete',
   'reassign',
+  'bulk_import',
 ];
 
 const auditLogSchema = new mongoose.Schema(

@@ -16,15 +16,18 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB, matches the frontend's upload c
 
 const storage = multer.memoryStorage();
 
+/** Shared by `upload` below and bulkUpload.js's `bulkFilesUpload` — same PDF/DOC/DOCX restriction either way. */
+function documentFileFilter(req, file, cb) {
+  if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    return cb(new BadRequestError('Only PDF and Word (.doc/.docx) files are supported'));
+  }
+  cb(null, true);
+}
+
 const upload = multer({
   storage,
   limits: { fileSize: MAX_FILE_SIZE },
-  fileFilter(req, file, cb) {
-    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      return cb(new BadRequestError('Only PDF and Word (.doc/.docx) files are supported'));
-    }
-    cb(null, true);
-  },
+  fileFilter: documentFileFilter,
 });
 
 /** Resolves a reliable file extension for an uploaded file — from its mimetype first, falling back to its original filename. */
@@ -54,4 +57,4 @@ async function uploadBufferToR2(buffer, { key, contentType }) {
   return { key };
 }
 
-module.exports = { upload, uploadBufferToR2, resolveExtension };
+module.exports = { upload, uploadBufferToR2, resolveExtension, documentFileFilter, MAX_FILE_SIZE };

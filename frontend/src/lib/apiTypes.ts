@@ -130,6 +130,50 @@ export interface ApiDocument {
   updatedAt: string;
 }
 
+/** Row shape shared by /documents/bulk-import/parse and /commit — see backend/src/modules/documents/bulkImport.service.js. */
+export interface ApiBulkImportRowData {
+  documentId: string;
+  destination: ApiDocumentDestination | '';
+  department: string;
+  title: string;
+  description: string;
+  fileName: string;
+  authorName: string;
+  version: string;
+  category: ApiDocumentType | '';
+  drawingNumber: string;
+  discipline: string;
+  area: string;
+  revision: string;
+}
+
+export interface ApiBulkImportRow {
+  rowNumber: number;
+  data: ApiBulkImportRowData;
+  status: 'valid' | 'invalid';
+  errors: string[];
+}
+
+export interface ApiBulkImportParseResult {
+  rows: ApiBulkImportRow[];
+  summary: { total: number; valid: number; invalid: number };
+}
+
+export interface ApiBulkImportResultRow {
+  row: number;
+  status: 'succeeded' | 'failed' | 'skipped';
+  docId?: string;
+  error?: string;
+}
+
+export interface ApiBulkImportCommitResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  results: ApiBulkImportResultRow[];
+}
+
 export interface ApiComment {
   _id: string;
   targetType: 'document';
