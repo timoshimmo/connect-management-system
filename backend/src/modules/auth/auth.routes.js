@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('./auth.controller');
+const microsoftController = require('./microsoft.controller');
 const { validate } = require('../../middlewares/validate');
 const { authenticate } = require('../../middlewares/auth');
 const { authLimiter } = require('../../middlewares/rateLimiter');
@@ -134,5 +135,52 @@ router.post(
  *       401: { description: Missing/invalid access token }
  */
 router.get('/me', authenticate, controller.me);
+
+/**
+ * Microsoft Entra ID SSO — see auth/microsoft.service.js. Fully optional:
+ * when MICROSOFT_CLIENT_ID/SECRET/TENANT_ID aren't configured,
+ * `/enabled` reports false and every other route below responds with a
+ * clear "not configured" error rather than the app failing to start.
+ *
+ * @openapi
+ * /auth/microsoft/enabled:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Whether Microsoft SSO is configured (controls the frontend's "Sign in with Microsoft" button)
+ *     responses:
+ *       200: { content: { application/json: { example: { enabled: true } } } }
+ * /auth/microsoft/start:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Begin "Sign in with Microsoft" — redirects to Microsoft's login page
+ *     responses:
+ *       302: { description: Redirect to Microsoft }
+ * /auth/microsoft/link/start:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Begin linking Microsoft to the signed-in user's account (from their Profile page)
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { content: { application/json: { example: { url: "https://login.microsoftonline.com/..." } } } }
+ * /auth/microsoft/callback:
+ *   get:
+ *     tags: [Auth]
+ *     summary: OAuth redirect target — resolves/creates/links the user, sets the session, redirects back into the app
+ *     responses:
+ *       302: { description: Redirect to /ms-publishing on success, or /login?ssoError=<code> on failure }
+ * /auth/microsoft/unlink:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Disconnect Microsoft from the signed-in user's account (refused if it's their only auth method)
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Microsoft disconnected }
+ *       400: { description: No password set — would lock the account out }
+ */
+router.get('/microsoft/enabled', microsoftController.enabled);
+router.get('/microsoft/start', authLimiter, microsoftController.start);
+router.post('/microsoft/link/start', authLimiter, authenticate, microsoftController.linkStart);
+router.get('/microsoft/callback', authLimiter, microsoftController.callback);
+router.post('/microsoft/unlink', authenticate, microsoftController.unlink);
 
 module.exports = router;

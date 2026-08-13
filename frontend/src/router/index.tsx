@@ -10,6 +10,7 @@ import {
   DrawingRegisterLoginPage,
   DrawingRegisterPage,
   CreateUserPage,
+  ProfilePage,
 } from '@/pages';
 import { useAppSelector } from '@/hooks';
 import { FEATURES } from '@/config/features';
@@ -79,6 +80,10 @@ export const router = createBrowserRouter([
   {
     path: '/users/new',
     element: <CreateUserPage />,
+  },
+  {
+    path: '/profile',
+    element: <ProfilePage />,
   },
   ...(FEATURES.drawingRegister
     ? [

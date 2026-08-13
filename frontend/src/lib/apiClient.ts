@@ -9,6 +9,9 @@ import { getAccessToken, setAccessToken } from './tokenStore';
  */
 const BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
+/** Exposed for the handful of call sites that need a real browser navigation instead of a fetch — e.g. "Sign in with Microsoft" (OAuth requires a full page redirect to Microsoft's own login page). */
+export const API_BASE_URL = BASE_URL;
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {

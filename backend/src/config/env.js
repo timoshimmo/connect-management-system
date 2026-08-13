@@ -50,4 +50,20 @@ module.exports = {
     pass: required('SMTP_PASS', ''),
     fromAddress: required('SMTP_FROM', ''),
   },
+  microsoft: (() => {
+    const tenantId = required('MICROSOFT_TENANT_ID', '');
+    const clientId = required('MICROSOFT_CLIENT_ID', '');
+    const clientSecret = required('MICROSOFT_CLIENT_SECRET', '');
+    // Same "unconfigured = disabled, not a crash" convention as smtp/r2
+    // above (see mailer.js's getTransporter()) — Microsoft SSO is optional;
+    // leaving these blank just hides the "Sign in with Microsoft" button
+    // and 503s the SSO routes instead of failing to start.
+    return {
+      tenantId,
+      clientId,
+      clientSecret,
+      redirectUri: required('MICROSOFT_REDIRECT_URI', `http://localhost:${required('PORT', 5000)}/api/auth/microsoft/callback`),
+      enabled: Boolean(tenantId && clientId && clientSecret),
+    };
+  })(),
 };
