@@ -171,7 +171,7 @@ async function resolveAndSignIn({ claims, linkUserId }) {
     if (conflicting && conflicting._id.toString() !== linkUserId) {
       throw ssoError(ConflictError, 'link_conflict', 'This Microsoft account is already linked to a different STACconnect user.');
     }
-    user = await User.findById(linkUserId);
+    user = await User.findById(linkUserId).populate('department', 'name code');
     if (!user) throw ssoError(UnauthorizedError, 'unknown', 'Your session is no longer valid. Please sign in again.');
     if (!user.microsoftId) {
       user.microsoftId = oid;
@@ -183,9 +183,9 @@ async function resolveAndSignIn({ claims, linkUserId }) {
       event = 'login'; // re-linking the same identity — treat as a normal sign-in
     }
   } else {
-    user = await User.findOne({ microsoftId: oid });
+    user = await User.findOne({ microsoftId: oid }).populate('department', 'name code');
     if (!user) {
-      user = await User.findOne({ email });
+      user = await User.findOne({ email }).populate('department', 'name code');
       if (user) {
         if (user.microsoftId && user.microsoftId !== oid) {
           throw ssoError(ConflictError, 'link_conflict', 'This account is already linked to a different Microsoft identity.');
@@ -253,7 +253,7 @@ async function resolveAndSignIn({ claims, linkUserId }) {
 
 /** Disconnecting is refused when it's the account's only auth method — spec §11/§16 — so nobody can lock themselves out. */
 async function unlink(userId) {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).populate('department', 'name code');
   if (!user) throw new UnauthorizedError('User not found.');
   if (!user.microsoftId) throw new BadRequestError('No Microsoft account is linked.');
   if (!user.passwordHash) {

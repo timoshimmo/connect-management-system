@@ -74,7 +74,7 @@ function issueTokens(user) {
 }
 
 async function login({ email, password }) {
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: email.toLowerCase() }).populate('department', 'name code');
   if (!user) throw new UnauthorizedError('Invalid email or password');
 
   // An SSO-only account (Microsoft, no password ever set) has no hash to
@@ -122,7 +122,7 @@ async function refresh(refreshTokenValue) {
     throw new UnauthorizedError('Refresh token is no longer valid');
   }
 
-  const user = await User.findById(decoded.sub);
+  const user = await User.findById(decoded.sub).populate('department', 'name code');
   if (!user) throw new UnauthorizedError('User no longer exists');
 
   // Rotate: revoke the old token and issue a new pair.
