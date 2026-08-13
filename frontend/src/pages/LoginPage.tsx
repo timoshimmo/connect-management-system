@@ -11,11 +11,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const loginMutation = useLoginMutation();
-  // Not read directly right now — see the TEMPORARY note below where the
-  // button's visibility is forced on. Keeping the query warm so reverting
-  // to `{ssoEnabled && (...)}` is a one-line change once real credentials
-  // are configured.
-  useMicrosoftSsoEnabledQuery();
+  const { data: ssoEnabled } = useMicrosoftSsoEnabledQuery();
   const { showError } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [email, setEmail] = useState('');
@@ -76,26 +72,22 @@ export function LoginPage() {
           </div>
 
           <div className="p-6">
-            {/*
-              TEMPORARY: forced visible while Entra credentials are being set
-              up (MICROSOFT_TENANT_ID/CLIENT_ID/CLIENT_SECRET still unset).
-              Wrap this back in `{ssoEnabled && (...)}` once real credentials
-              are in place — the button will then show/hide itself
-              automatically based on /auth/microsoft/enabled, with no other
-              code change needed.
-            */}
-            <a
-              href={`${API_BASE_URL}/auth/microsoft/start`}
-              className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <MicrosoftLogo />
-              Sign in with Microsoft
-            </a>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">or</span>
-              <div className="h-px flex-1 bg-gray-200" />
-            </div>
+            {ssoEnabled && (
+              <>
+                <a
+                  href={`${API_BASE_URL}/auth/microsoft/start`}
+                  className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <MicrosoftLogo />
+                  Sign in with Microsoft
+                </a>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-400">or</span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+              </>
+            )}
 
             <form
               onSubmit={(e) => {
