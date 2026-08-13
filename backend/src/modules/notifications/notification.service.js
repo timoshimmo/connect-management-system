@@ -30,6 +30,11 @@ const NOTIFICATION_EMAIL_SUBJECTS = {
   contact_message: 'New Message from Document Controller Contact Form',
   user_created: 'New User Created',
   drawing_register_user_created: 'New Drawing Register User',
+  sso_account_created: 'Welcome to STACconnect',
+  sso_linked: 'Microsoft Account Linked',
+  sso_unlinked: 'Microsoft Account Disconnected',
+  account_deactivated: 'Account Deactivated',
+  access_changed: 'Your Access Has Changed',
 };
 
 function titleFor(type) {

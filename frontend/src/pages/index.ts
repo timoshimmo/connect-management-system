@@ -7,3 +7,4 @@ export { ResetPasswordPage } from './ResetPasswordPage';
 export { DrawingRegisterLoginPage } from './DrawingRegisterLoginPage';
 export { DrawingRegisterPage } from './DrawingRegisterPage';
 export { CreateUserPage } from './CreateUserPage';
+export { ProfilePage } from './ProfilePage';

@@ -2,6 +2,7 @@ const { User } = require('./user.model');
 const { NotFoundError, ConflictError, ForbiddenError } = require('../../common/errors');
 const { hashPassword } = require('../../utils/password');
 const { inviteUser } = require('../auth/auth.service');
+const { notifyUser } = require('../notifications/notification.service');
 
 async function listUsers({ role } = {}) {
   const filter = {};
@@ -28,21 +29,28 @@ async function updateUserRole(id, role) {
  * user a set-password link, so they never actually need to learn or use
  * the password the admin typed. A failed invite email never fails account
  * creation itself (sendMail/inviteUser already swallow their own errors).
+ *
+ * `password` is optional — a Controller can create a placeholder account
+ * for someone who'll only ever sign in with Microsoft SSO (see
+ * auth/microsoft.service.js). Skipping both hashPassword and inviteUser in
+ * that case is deliberate: there's no password to invite them to set, and
+ * they'll get a real account the moment they first sign in with Microsoft
+ * and it auto-links by matching email.
  */
 async function createUser({ name, email, password, role, department, status }) {
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) throw new ConflictError('A user with this email already exists.');
 
-  const passwordHash = await hashPassword(password);
+  const passwordHash = password ? await hashPassword(password) : null;
   const user = await User.create({
     name,
     email: email.toLowerCase(),
     passwordHash,
-    role,
+    role: role || null,
     department: department || null,
     status: status || 'Active',
   });
-  await inviteUser(user);
+  if (password) await inviteUser(user);
   return getUserById(user._id);
 }
 
@@ -65,6 +73,10 @@ async function updateUser(id, updates, actingUserId) {
   const user = await User.findById(id);
   if (!user) throw new NotFoundError('User not found');
 
+  const becameInactive = updates.status === 'Inactive' && user.status !== 'Inactive';
+  const roleChanged = updates.role !== undefined && String(updates.role) !== String(user.role);
+  const departmentChanged = updates.department !== undefined && String(updates.department || '') !== String(user.department || '');
+
   if (updates.email !== undefined) {
     const nextEmail = updates.email.toLowerCase();
     if (nextEmail !== user.email) {
@@ -80,6 +92,19 @@ async function updateUser(id, updates, actingUserId) {
   if (updates.jobTitle !== undefined) user.jobTitle = updates.jobTitle;
 
   await user.save();
+
+  if (becameInactive) {
+    await notifyUser(user._id, {
+      type: 'account_deactivated',
+      message: 'Your account has been deactivated. Contact your Document Controller if you believe this is a mistake.',
+    });
+  } else if (roleChanged || departmentChanged) {
+    await notifyUser(user._id, {
+      type: 'access_changed',
+      message: 'Your role or department was updated by a Document Controller.',
+    });
+  }
+
   return getUserById(user._id);
 }
 

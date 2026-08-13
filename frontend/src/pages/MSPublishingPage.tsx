@@ -221,7 +221,29 @@ function MSPublishingContent() {
     ];
   }, [user?.role, counts, myDocuments, allDocuments]);
 
-  if (!user || !user.role) return null;
+  if (!user) return null;
+
+  if (!user.role) {
+    // First-time Microsoft SSO signup (or a manually-created placeholder
+    // account) with no role assigned yet — see auth/microsoft.service.js.
+    // No sidebar/workflow view makes sense until a Controller assigns one.
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-lg font-bold text-gray-900">Awaiting Role Assignment</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Your account has been created, but a Document Controller hasn't assigned you a role or department yet.
+          You'll be able to access STACconnect as soon as that's done.
+        </p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
+  }
   const role = ROLES[user.role];
 
   function openNewDoc() {

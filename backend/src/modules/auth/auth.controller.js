@@ -50,4 +50,4 @@ const me = asyncHandler(async (req, res) => {
   res.json({ user: user.toPublicJSON() });
 });
 
-module.exports = { login, refresh, logout, forgotPassword, resetPassword, me };
+module.exports = { login, refresh, logout, forgotPassword, resetPassword, me, setRefreshCookie };

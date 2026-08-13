@@ -41,7 +41,8 @@ export interface UpdateUserPayload {
   id: string;
   name?: string;
   email?: string;
-  role?: ApiRole;
+  /** Null clears the role back to "Unassigned". */
+  role?: ApiRole | null;
   department?: string | null;
   status?: ApiUserStatus;
   jobTitle?: string;

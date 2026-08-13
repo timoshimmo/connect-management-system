@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, Search, KeyRound, ShieldCheck } from 'lucide-react';
 import { useDepartmentsQuery } from '@/features/departments/hooks';
 import { ActionButton } from '@/features/ms-publishing';
 import type { ApiRole, ApiUser, ApiUserStatus } from '@/lib/apiTypes';
@@ -184,6 +184,9 @@ export function UsersTable({ users, currentUserId, onView, onEdit, onToggleStatu
                 Status
               </th>
               <th className="whitespace-nowrap px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Auth
+              </th>
+              <th className="whitespace-nowrap px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <SortHeader label="Created" sortKeyValue="createdAt" />
               </th>
               <th className="whitespace-nowrap px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -194,7 +197,7 @@ export function UsersTable({ users, currentUserId, onView, onEdit, onToggleStatu
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-14 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-5 py-14 text-center text-sm text-gray-500">
                   No users match your filters.
                 </td>
               </tr>
@@ -204,7 +207,13 @@ export function UsersTable({ users, currentUserId, onView, onEdit, onToggleStatu
                   <td className="px-5 py-3 font-semibold text-gray-900">{u.name}</td>
                   <td className="px-5 py-3 text-gray-500">{u.email}</td>
                   <td className="px-5 py-3 text-gray-500">{departmentName(u.department)}</td>
-                  <td className="px-5 py-3 text-gray-700">{ROLE_LABELS[u.role]}</td>
+                  <td className="px-5 py-3 text-gray-700">
+                    {u.role ? (
+                      ROLE_LABELS[u.role]
+                    ) : (
+                      <span className="italic text-amber-600">Unassigned</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3">
                     <span
                       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
@@ -215,6 +224,12 @@ export function UsersTable({ users, currentUserId, onView, onEdit, onToggleStatu
                     >
                       {u.status}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-1.5" title={`Password ${u.hasPassword ? 'enabled' : 'not set'} · Microsoft ${u.microsoftLinked ? 'connected' : 'not connected'}`}>
+                      <KeyRound className={`h-3.5 w-3.5 ${u.hasPassword ? 'text-brand-700' : 'text-gray-300'}`} />
+                      <ShieldCheck className={`h-3.5 w-3.5 ${u.microsoftLinked ? 'text-brand-700' : 'text-gray-300'}`} />
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-gray-500">
                     {new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}

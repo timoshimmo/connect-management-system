@@ -8,11 +8,16 @@ export interface ApiUser {
   id: string;
   name: string;
   email: string;
-  role: ApiRole;
+  /** Null for a first-time Microsoft SSO signup awaiting a Controller to assign one — see MSPublishingPage.tsx. */
+  role: ApiRole | null;
   status: ApiUserStatus;
   jobTitle: string;
   department: { id: string; name: string; code: string } | string | null;
   createdAt: string;
+  /** Whether this account can sign in with email+password (may be false for an SSO-only account). */
+  hasPassword: boolean;
+  /** Whether a Microsoft account is linked — see the Authentication section on the Profile page. */
+  microsoftLinked: boolean;
 }
 
 export interface ApiUserRef {
