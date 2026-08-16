@@ -102,7 +102,10 @@ export type ApiDocumentType =
 export type ApiDocumentLocation = 'Onshore' | 'Offshore – Mayo ABO' | 'Both';
 
 /** Where the document is published once approved — see document.model.js. */
-export type ApiDocumentDestination = 'Read Site' | 'Drawing Register';
+export type ApiDocumentDestination = 'Read Site' | 'Drawing Register' | 'Document Register';
+
+/** ISO standards a Document Register document can be tagged against — see document.model.js's ISO_STANDARDS. */
+export type ApiIsoStandard = 'ISO 9001 (Quality)' | 'ISO 14001 (Environment)' | 'ISO 45001 (OH&S)';
 
 export interface ApiDocument {
   _id: string;
@@ -123,7 +126,11 @@ export interface ApiDocument {
   drawingNumber: string;
   discipline: ApiDisciplineRef | string | null;
   area: string;
+  /** Drawing Register: freeform revision string. Document Register: same field, e.g. "0", "Rev A". */
   revision: string;
+  /** Document Register-only metadata — empty for Read Site/Drawing Register documents. */
+  isoStandards: ApiIsoStandard[];
+  isoClauses: string;
   notes: string;
   returned: boolean;
   publishedAt: string | null;
@@ -177,6 +184,18 @@ export interface ApiBulkImportCommitResult {
   failed: number;
   skipped: number;
   results: ApiBulkImportResultRow[];
+}
+
+/** GET /document-register/types — live counts for the Document Type filter sidebar. */
+export interface ApiDocumentRegisterTypeCount {
+  type: ApiDocumentType;
+  count: number;
+}
+
+/** GET /document-register/iso-standards — live counts for the ISO Standard filter sidebar. */
+export interface ApiDocumentRegisterIsoCount {
+  standard: ApiIsoStandard;
+  count: number;
 }
 
 export interface ApiComment {

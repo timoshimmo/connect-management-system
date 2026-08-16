@@ -1,18 +1,29 @@
-const { Document } = require('../documents/document.model');
+const { Document, DOCUMENT_TYPES, ISO_STANDARDS } = require('../documents/document.model');
 const { Department } = require('../departments/department.model');
 const { NotFoundError, ForbiddenError } = require('../../common/errors');
 
 /**
- * Shared by both storefronts: the public Read Site (destination:'Read Site',
- * no auth) and the gated Drawing Register (destination:'Drawing Register',
- * requires authenticateDrawingRegister) — see readSite.routes.js and
- * drawingRegisterContent.routes.js, which both call these same functions
- * with a different `destination`.
+ * Shared by all three storefronts: the public Read Site (destination:'Read
+ * Site', no auth), the gated Drawing Register (destination:'Drawing
+ * Register', requires authenticateDrawingRegister), and the public Document
+ * Register (destination:'Document Register', no auth) — see
+ * readSite.routes.js, drawingRegisterContent.routes.js, and
+ * documentRegister.routes.js, which each call these same functions with a
+ * different `destination`.
  */
-async function listPublishedDocuments({ department, type, search, skip = 0, limit = 20, destination = 'Read Site' }) {
+async function listPublishedDocuments({
+  department,
+  type,
+  search,
+  isoStandard,
+  skip = 0,
+  limit = 20,
+  destination = 'Read Site',
+}) {
   const filter = { status: 'Published', destination };
   if (department) filter.department = department;
   if (type) filter.type = type;
+  if (isoStandard) filter.isoStandards = isoStandard;
   if (search) {
     filter.$or = [{ title: new RegExp(search, 'i') }, { docId: new RegExp(search, 'i') }];
   }
@@ -48,6 +59,43 @@ async function listDepartmentsWithCounts(destination = 'Read Site') {
   }));
 }
 
+/**
+ * Live per-type published-document counts for a destination (e.g. the
+ * Document Register's "Document Type" filter sidebar) — every one of the 9
+ * types is always present, zero-filled, so the frontend never has to guess
+ * at a missing type's count.
+ */
+async function listTypesWithCounts(destination) {
+  const counts = await Document.aggregate([
+    { $match: { status: 'Published', destination, type: { $ne: null } } },
+    { $group: { _id: '$type', count: { $sum: 1 } } },
+  ]);
+  const countByType = new Map(counts.map((c) => [c._id, c.count]));
+  return DOCUMENT_TYPES.map((type) => ({ type, count: countByType.get(type) ?? 0 }));
+}
+
+/** Same live-count pattern as listTypesWithCounts, for the ISO Standard filter. */
+async function listIsoStandardsWithCounts(destination) {
+  const counts = await Document.aggregate([
+    { $match: { status: 'Published', destination } },
+    { $unwind: '$isoStandards' },
+    { $group: { _id: '$isoStandards', count: { $sum: 1 } } },
+  ]);
+  const countByStandard = new Map(counts.map((c) => [c._id, c.count]));
+  return ISO_STANDARDS.map((standard) => ({ standard, count: countByStandard.get(standard) ?? 0 }));
+}
+
+/** Single published document's public detail (e.g. Document Register's "View" page) — 404s for anything not Published on this destination, same visibility rule as the list/file functions above. */
+async function getPublishedDocument(id, destination = 'Read Site') {
+  const doc = await Document.findOne({ _id: id, status: 'Published', destination })
+    .populate('department', 'name code')
+    .populate('discipline', 'name')
+    .populate('approver', 'name')
+    .populate('currentVersion');
+  if (!doc) throw new NotFoundError('Document not found');
+  return doc;
+}
+
 async function getPublicDocumentFile(id, destination = 'Read Site') {
   const doc = await Document.findById(id).populate('currentVersion');
   if (!doc) throw new NotFoundError('Document not found');
@@ -76,4 +124,12 @@ async function getPublicStats() {
   return { totalDocuments, pendingApproval, publishedThisMonth, dueForReview };
 }
 
-module.exports = { listPublishedDocuments, listDepartmentsWithCounts, getPublicDocumentFile, getPublicStats };
+module.exports = {
+  listPublishedDocuments,
+  listDepartmentsWithCounts,
+  listTypesWithCounts,
+  listIsoStandardsWithCounts,
+  getPublishedDocument,
+  getPublicDocumentFile,
+  getPublicStats,
+};

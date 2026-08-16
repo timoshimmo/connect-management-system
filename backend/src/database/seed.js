@@ -7,6 +7,7 @@ const { User } = require('../modules/users/user.model');
 const { Department } = require('../modules/departments/department.model');
 const { Discipline } = require('../modules/disciplines/discipline.model');
 const { Document, DOCUMENT_TYPE_PREFIXES, POLICY_RESERVED_SEQUENCE } = require('../modules/documents/document.model');
+const { Counter } = require('../modules/documents/counter.model');
 const { RefreshToken } = require('../modules/auth/refreshToken.model');
 const { AuditLog } = require('../modules/auditLogs/auditLog.model');
 const { DrawingRegisterUser } = require('../modules/drawingRegisterUsers/drawingRegisterUser.model');
@@ -110,10 +111,21 @@ const DOCUMENTS = [
 
   { title: 'Compliance Training Procedure (Superseded)', department: 'Compliance', type: 'Procedure', status: 'Archived', author: 'M. Danladi', reviewer: 'B. Usman', approver: 'F. Aliyu', publishedDate: '2024-10-01', nextReviewDate: null, description: 'Superseded by Compliance Code of Conduct 2026 training module.', location: 'Onshore', notes: 'Archived – superseded by new version' },
   { title: 'Import & Export Compliance (Superseded)', department: 'Supply Chain', type: 'Policy', status: 'Archived', author: 'N. Abubakar', reviewer: 'B. Usman', approver: 'F. Aliyu', publishedDate: '2024-06-01', nextReviewDate: null, description: 'Superseded by updated customs and trade compliance procedure.', location: 'Onshore', notes: 'Archived – superseded' },
+
+  // Document Register — Controller-registered controlled QHSE documents,
+  // created directly as Published (no review workflow). See
+  // documentRegister.controller.js / document.service.js's createDocument.
+  { title: 'QHSE Management System Manual', department: 'Compliance', type: 'Manual', status: 'Published', author: 'Admin', reviewer: null, approver: null, publishedDate: '2026-08-13', nextReviewDate: '2027-08-13', description: 'The overarching QHSE Management System manual.', location: 'Both', notes: '', destination: 'Document Register', revision: '0', isoStandards: ['ISO 9001 (Quality)', 'ISO 14001 (Environment)', 'ISO 45001 (OH&S)'], isoClauses: '4–10' },
+  { title: 'QHSE Risk and Opportunities Register Procedure', department: 'Compliance', type: 'Procedure', status: 'Published', author: 'Admin', reviewer: null, approver: null, publishedDate: '2026-08-13', nextReviewDate: '2027-08-13', description: 'How QHSE risks and opportunities are identified, assessed and tracked.', location: 'Both', notes: '', destination: 'Document Register', revision: '0', isoStandards: ['ISO 9001 (Quality)'], isoClauses: '6.1.1' },
+  { title: 'Context of the Organization & Interested Parties Procedure', department: 'Compliance', type: 'Procedure', status: 'Published', author: 'Admin', reviewer: null, approver: null, publishedDate: '2026-08-13', nextReviewDate: '2027-08-13', description: 'Determining internal/external issues and interested-party requirements.', location: 'Both', notes: '', destination: 'Document Register', revision: '0', isoStandards: ['ISO 9001 (Quality)', 'ISO 14001 (Environment)'], isoClauses: '4.1–4.2' },
+  { title: 'Roles, Responsibilities & Authorities Procedure', department: 'Compliance', type: 'Procedure', status: 'Published', author: 'Admin', reviewer: null, approver: null, publishedDate: '2026-08-13', nextReviewDate: '2027-08-13', description: 'Assigns QHSE roles, responsibilities and authorities across the organization.', location: 'Both', notes: '', destination: 'Document Register', revision: '0', isoStandards: ['ISO 9001 (Quality)', 'ISO 45001 (OH&S)'], isoClauses: '5.3' },
+  { title: 'Environmental Aspects & OH&S Hazard Evaluation Procedure', department: 'Health, Safety & Environment', type: 'Procedure', status: 'Published', author: 'Admin', reviewer: null, approver: null, publishedDate: '2026-08-13', nextReviewDate: '2027-08-13', description: 'Identifying environmental aspects and OH&S hazards and evaluating their significance.', location: 'Both', notes: '', destination: 'Document Register', revision: '0', isoStandards: ['ISO 14001 (Environment)', 'ISO 45001 (OH&S)'], isoClauses: '6.1.2' },
 ];
 
 // Mirrors document.service.js's nextDocIdForType/nextDocIdByDepartment so
-// seeded docIds look exactly like what the real app generates.
+// seeded docIds look exactly like what the real app generates: SMS-XXNNNNN
+// (no separator, 5 digits) for Read Site/Document Register, DEPT-YEAR-NNN
+// for Drawing Register.
 const typeSequence = {};
 function nextDocId(d, departmentCode) {
   if (d.destination === 'Drawing Register') {
@@ -124,10 +136,9 @@ function nextDocId(d, departmentCode) {
   }
   const prefix = DOCUMENT_TYPE_PREFIXES[d.type];
   const isPolicy = d.type === 'Policy';
-  const digits = isPolicy ? 4 : 3;
   const baseline = isPolicy ? POLICY_RESERVED_SEQUENCE : 0;
   typeSequence[prefix] = (typeSequence[prefix] ?? baseline) + 1;
-  return `${prefix}-${String(typeSequence[prefix]).padStart(digits, '0')}`;
+  return `${prefix}${String(typeSequence[prefix]).padStart(5, '0')}`;
 }
 
 async function seed() {
@@ -140,6 +151,7 @@ async function seed() {
     Department.deleteMany({}),
     Discipline.deleteMany({}),
     Document.deleteMany({}),
+    Counter.deleteMany({}),
     RefreshToken.deleteMany({}),
     AuditLog.deleteMany({}),
     DrawingRegisterUser.deleteMany({}),
@@ -189,10 +201,28 @@ async function seed() {
       discipline: d.discipline ? disciplineByName.get(d.discipline) : null,
       area: d.area || '',
       revision: d.revision || '',
+      isoStandards: d.isoStandards || [],
+      isoClauses: d.isoClauses || '',
       publishedAt: d.publishedDate ? new Date(d.publishedDate) : null,
       nextReviewDate: d.nextReviewDate ? new Date(d.nextReviewDate) : null,
     });
   }
+
+  // Catch up the real atomic Counter collection (document.service.js's
+  // nextSequence) to match what was just seeded — this loop numbers
+  // documents itself rather than calling the app's real numbering
+  // functions, so without this the Counter would start back at 0 and the
+  // very next real document created after seeding would collide with (and
+  // have to retry past) every docId just seeded. Drawing Register's
+  // DEPT-YEAR- keys are skipped: that scheme still scans for the highest
+  // existing docId rather than using a Counter (see document.service.js's
+  // nextDocIdByDepartment), so nothing to seed there.
+  const typePrefixes = new Set(Object.values(DOCUMENT_TYPE_PREFIXES));
+  await Promise.all(
+    Object.entries(typeSequence)
+      .filter(([prefix]) => typePrefixes.has(prefix))
+      .map(([prefix, seq]) => Counter.updateOne({ _id: prefix }, { $set: { seq } }, { upsert: true }))
+  );
 
   console.log('Seeding Drawing Register users (all share the password "%s")...', DEMO_PASSWORD);
   const drPasswordHash = await hashPassword(DEMO_PASSWORD);

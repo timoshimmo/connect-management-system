@@ -27,7 +27,13 @@ const userSchema = new mongoose.Schema(
     // tenant+app, unlike email (which a user could change in Entra).
     // `sparse: true` lets every password-only account keep this null
     // without violating the unique index.
-    microsoftId: { type: String, default: null, unique: true, sparse: true },
+    // No `default: null` here deliberately — a sparse index only excludes
+    // documents where the field is *missing*, not ones where it's explicitly
+    // `null`. A default of null would put every password-only user in the
+    // index as `null`, colliding on the second one created (11000 duplicate
+    // key on { microsoftId: null }). Leaving it unset for non-SSO users
+    // keeps them correctly excluded from the sparse unique index.
+    microsoftId: { type: String, unique: true, sparse: true },
     microsoftTenantId: { type: String, default: null },
     microsoftLinkedAt: { type: Date, default: null },
   },

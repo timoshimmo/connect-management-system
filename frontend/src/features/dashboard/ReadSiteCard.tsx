@@ -7,6 +7,7 @@ import {
   FileSearch,
   RefreshCw,
   ClipboardCheck,
+  FolderLock,
 } from 'lucide-react';
 import {
   Badge,
@@ -37,6 +38,7 @@ const sections = [
     description: 'Recent policy updates',
   },
   { to: '/read-site?type=Form', icon: ClipboardCheck, label: 'Forms', description: 'Fillable templates' },
+  { to: '/document-register', icon: FolderLock, label: 'Document Register', description: 'Controlled documents' },
 ];
 
 export function ReadSiteCard() {
@@ -58,7 +60,7 @@ export function ReadSiteCard() {
       </CardHeader>
 
       <CardBody className="flex-1">
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {sections.map((section) => (
             <RoleLink
               key={section.label}

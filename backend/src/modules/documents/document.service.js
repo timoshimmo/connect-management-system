@@ -1,7 +1,8 @@
 const { Document, DOCUMENT_TYPE_PREFIXES, POLICY_RESERVED_SEQUENCE } = require('./document.model');
 const { DocumentVersion } = require('./documentVersion.model');
+const { Counter } = require('./counter.model');
 const { Department } = require('../departments/department.model');
-const { NotFoundError, BadRequestError, ConflictError } = require('../../common/errors');
+const { NotFoundError, BadRequestError, ConflictError, ForbiddenError } = require('../../common/errors');
 const { uploadBufferToR2, resolveExtension } = require('../../middlewares/upload');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 const { notifyUser, notifyRole } = require('../notifications/notification.service');
@@ -28,40 +29,61 @@ async function nextDocIdByDepartment(departmentId) {
 }
 
 /**
- * Company numbering convention: `<SMS-XX>-<NNN>` per document type,
- * independent of department/year (e.g. "SMS-PR-015", "SMS-PO-0004").
- * Policy uses 4-digit numbers and reserves 0001–0003 for documents created
- * manually outside the app — automatic numbering starts at 0004. Every
- * other type uses 3-digit numbers starting at 001. The lookup is scoped to
- * docIds matching this exact type's prefix, so it's unaffected by (and
- * never collides with) any legacy department/year-formatted docIds already
- * in the database.
+ * Atomically allocates the next sequence number for `prefix` (e.g.
+ * "SMS-PO") via a dedicated Counter document — `$inc` on a single document
+ * is atomic in MongoDB, so this can't hand out the same number twice under
+ * concurrent document creation the way scanning for "highest existing + 1"
+ * could. `baseline` seeds the counter's starting point (only takes effect
+ * the very first time this prefix is ever used — `$setOnInsert` is a no-op
+ * on every call after that), so a fresh Policy counter starts handing out
+ * numbers at `baseline + 1` instead of `1`.
+ */
+async function nextSequence(prefix, baseline = 0) {
+  await Counter.updateOne({ _id: prefix }, { $setOnInsert: { seq: baseline } }, { upsert: true });
+  const counter = await Counter.findOneAndUpdate({ _id: prefix }, { $inc: { seq: 1 } }, { new: true });
+  return counter.seq;
+}
+
+/**
+ * Company numbering convention: `<SMS-XX><NNNNN>` per document type,
+ * independent of department/year (e.g. "SMS-PR00015", "SMS-PO00004") — no
+ * separator between the prefix and the 5-digit sequence. Policy reserves
+ * 00001–00003 for documents created manually outside the app — automatic
+ * numbering starts at 00004. Every other type starts at 00001. Read Site
+ * and Document Register documents of the same type share one sequence
+ * (a "Policy" is a "Policy" regardless of which destination registered it).
  */
 async function nextDocIdForType(type) {
   const prefix = DOCUMENT_TYPE_PREFIXES[type];
   if (!prefix) throw new BadRequestError(`No numbering convention configured for document type "${type}"`);
 
   const isPolicy = type === 'Policy';
-  const digits = isPolicy ? 4 : 3;
   const baseline = isPolicy ? POLICY_RESERVED_SEQUENCE : 0;
 
-  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
-  const latest = await Document.findOne({ docId: pattern }).sort({ docId: -1 });
-  let nextSeq = baseline + 1;
-  if (latest) {
-    const match = latest.docId.match(pattern);
-    const seq = match ? Number(match[1]) : NaN;
-    if (!Number.isNaN(seq) && seq >= nextSeq) nextSeq = seq + 1;
-  }
-  return `${prefix}-${String(nextSeq).padStart(digits, '0')}`;
+  const seq = await nextSequence(prefix, baseline);
+  return `${prefix}${String(seq).padStart(5, '0')}`;
 }
 
-/** Dispatches to the type-based scheme for Read Site documents, the department-based scheme for Drawing Register ones. */
-async function nextDocId({ destination, department, type }) {
-  if (destination === 'Read Site' && type) {
+/**
+ * Dispatches to the type-based scheme (Read Site and Document Register
+ * documents both have a `type`) or the department-based scheme (Drawing
+ * Register documents, which have no `type`).
+ */
+async function nextDocId({ department, type }) {
+  if (type) {
     return nextDocIdForType(type);
   }
   return nextDocIdByDepartment(department);
+}
+
+const DESTINATION_LABELS = {
+  'Read Site': 'the Read Site',
+  'Drawing Register': 'the Drawing Register',
+  'Document Register': 'the Document Register',
+};
+
+function destinationLabel(destination) {
+  return DESTINATION_LABELS[destination] || 'the Read Site';
 }
 
 function expectStatus(doc, expected) {
@@ -143,6 +165,8 @@ async function createDocument({
   discipline,
   area,
   revision,
+  isoStandards,
+  isoClauses,
   authorId,
   file,
   docId: explicitDocId,
@@ -175,6 +199,8 @@ async function createDocument({
         discipline: discipline || null,
         area: area || '',
         revision: revision || '',
+        isoStandards: isoStandards || [],
+        isoClauses: isoClauses || '',
         author: authorId,
         status: status || 'Draft',
         ...publishedFields,
@@ -202,6 +228,8 @@ async function createDocument({
           discipline: discipline || null,
           area: area || '',
           revision: revision || '',
+          isoStandards: isoStandards || [],
+          isoClauses: isoClauses || '',
           author: authorId,
           status: status || 'Draft',
           ...publishedFields,
@@ -289,7 +317,19 @@ async function updateDocument(id, userId, userRole, updates) {
   if (doc.author.toString() !== userId && userRole !== 'controller') {
     throw new BadRequestError('Only the author or a Document Controller can edit this document');
   }
-  expectStatus(doc, 'Draft');
+  if (doc.destination === 'Document Register' && userRole !== 'controller') {
+    throw new ForbiddenError('Only a Document Controller can edit Document Register documents.');
+  }
+
+  // Document Register documents are Published the moment they're created —
+  // they never have a Draft phase, so editing one is only ever "editing the
+  // active document" rather than "editing before it goes live". Every other
+  // destination keeps the original Draft-only rule (edits after submission
+  // go through the review workflow instead).
+  const isActiveDocRegister = doc.destination === 'Document Register' && doc.status === 'Published';
+  if (!isActiveDocRegister) {
+    expectStatus(doc, 'Draft');
+  }
 
   if (updates.department) {
     const department = await Department.findById(updates.department);
@@ -527,15 +567,15 @@ async function publish(id, userId) {
   doc.nextReviewDate = new Date(Date.now() + ONE_YEAR_MS);
   await doc.save();
   await recordAudit({ user: userId, action: 'publish', targetType: 'document', targetId: doc._id });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyUser(doc.author, {
     type: 'document_published',
-    message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${label}.`,
     relatedDocument: doc._id,
   });
   await notifyRole('controller', {
     type: 'document_published',
-    message: `"${doc.title}" (${doc.docId}) has been published to ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) has been published to ${label}.`,
     relatedDocument: doc._id,
     excludeUserId: userId,
   });
@@ -574,10 +614,10 @@ async function archive(id, userId, reason) {
   doc.archiveReason = reason || '';
   await doc.save();
   await recordAudit({ user: userId, action: 'archive', targetType: 'document', targetId: doc._id });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyParticipants(doc, userId, {
     type: 'document_archived',
-    message: `"${doc.title}" (${doc.docId}) was archived and is no longer visible on ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) was archived and is no longer visible on ${label}.`,
   });
   return getDocumentById(doc._id);
 }
@@ -593,10 +633,10 @@ async function restore(id, userId) {
   doc.archiveReason = '';
   await doc.save();
   await recordAudit({ user: userId, action: 'edit', targetType: 'document', targetId: doc._id, metadata: { restored: true } });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyParticipants(doc, userId, {
     type: 'document_restored',
-    message: `"${doc.title}" (${doc.docId}) was restored and is visible on ${destinationLabel} again.`,
+    message: `"${doc.title}" (${doc.docId}) was restored and is visible on ${label} again.`,
   });
   return getDocumentById(doc._id);
 }

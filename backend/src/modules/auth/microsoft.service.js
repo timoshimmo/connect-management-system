@@ -260,7 +260,10 @@ async function unlink(userId) {
     throw new BadRequestError('Set a password first — disconnecting Microsoft now would lock you out of your account.');
   }
 
-  user.microsoftId = null;
+  // Unset (not null) — see user.model.js's comment on the sparse unique
+  // index: an explicit `null` would still occupy a slot in it and collide
+  // with the next user who unlinks or never links at all.
+  user.microsoftId = undefined;
   user.microsoftTenantId = null;
   user.microsoftLinkedAt = null;
   await user.save();

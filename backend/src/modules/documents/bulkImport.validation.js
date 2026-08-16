@@ -23,6 +23,8 @@ const bulkImportRowDataSchema = z.object({
   discipline: z.string().optional().default(''),
   area: z.string().optional().default(''),
   revision: z.string().optional().default(''),
+  isoStandards: z.string().optional().default(''),
+  isoClauses: z.string().optional().default(''),
 });
 
 const bulkImportCommitRowsSchema = z

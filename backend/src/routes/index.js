@@ -13,6 +13,7 @@ router.use('/notifications', require('../modules/notifications/notification.rout
 router.use('/audit-logs', require('../modules/auditLogs/auditLog.routes'));
 router.use('/dashboard', require('../modules/dashboard/dashboard.routes'));
 router.use('/read-site', require('../modules/readSite/readSite.routes'));
+router.use('/document-register', require('../modules/documentRegister/documentRegister.routes'));
 router.use('/drawing-register-auth', require('../modules/drawingRegisterAuth/drawingRegisterAuth.routes'));
 router.use('/drawing-register-users', require('../modules/drawingRegisterUsers/drawingRegisterUser.routes'));
 router.use('/drawing-register', require('../modules/drawingRegisterContent/drawingRegisterContent.routes'));

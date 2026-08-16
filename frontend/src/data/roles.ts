@@ -12,6 +12,8 @@ import {
   Building2,
   Layers,
   UploadCloud,
+  BookOpen,
+  FileSearch,
   type LucideIcon,
 } from 'lucide-react';
 import type { ApiRole } from '@/lib/apiTypes';
@@ -33,7 +35,9 @@ export type ViewKey =
   | 'authors'
   | 'departments'
   | 'disciplines'
-  | 'bulkUpload';
+  | 'bulkUpload'
+  | 'documentRegisterCreate'
+  | 'documentRegisterManage';
 
 export type CountKey =
   | 'drafts'
@@ -156,7 +160,10 @@ export const ROLES: Record<ApiRole, RoleConfig> = {
       { label: 'User Management', view: 'authors', icon: Users },
       { label: 'Department Management', view: 'departments', icon: Building2 },
       { label: 'Discipline Management', view: 'disciplines', icon: Layers },
-      { label: 'Bulk Upload Documents', view: 'bulkUpload', icon: UploadCloud },
+      { label: 'Document Register', divider: 'Document Register' },
+      { label: 'Create Document', view: 'documentRegisterCreate', icon: BookOpen },
+      { label: 'Bulk Upload', view: 'bulkUpload', icon: UploadCloud },
+      { label: 'Created Documents', view: 'documentRegisterManage', icon: FileSearch },
     ],
   },
 };

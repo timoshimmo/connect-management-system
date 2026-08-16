@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import PageHeader from '../components/ReadSite/PageHeader';
 import SearchBar from '../components/ReadSite/SearchBar';
 import DepartmentGrid from '../components/ReadSite/DepartmentGrid';
+import DocumentRegisterCard from '../components/ReadSite/DocumentRegisterCard';
 import DocumentTabs from '../components/ReadSite/DocumentTabs';
 import DocumentList from '../components/ReadSite/DocumentList';
 import FooterNotice from '../components/ReadSite/FooterNotice';
@@ -150,6 +151,10 @@ export function ReadSitePage() {
           />
         </div>
       </section>
+
+      <div className="pt-6">
+        <DocumentRegisterCard searchQuery={query} />
+      </div>
 
       <DepartmentGrid
         departments={departments}

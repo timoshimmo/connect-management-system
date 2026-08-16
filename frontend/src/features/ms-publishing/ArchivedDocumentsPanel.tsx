@@ -5,7 +5,7 @@ import { refId } from '@/lib/apiTypes';
 import type { ApiDocument, ApiDocumentType } from '@/lib/apiTypes';
 import { DocumentsTable } from './DocumentsTable';
 import { ActionButton } from './ActionButton';
-import { titleColumn, departmentColumn, archivedByColumn, archiveReasonColumn, dateColumn } from './columns';
+import { titleColumn, destinationColumn, departmentColumn, archivedByColumn, archiveReasonColumn, dateColumn } from './columns';
 
 const DOCUMENT_TYPES: ApiDocumentType[] = [
   'Manual',
@@ -63,7 +63,7 @@ export function ArchivedDocumentsPanel({ documents, onView, onRestore }: Archive
     <DocumentsTable
       title="Archived Documents"
       documents={filtered}
-      columns={[titleColumn, departmentColumn, archivedByColumn, dateColumn('archivedAt', 'Archived On'), archiveReasonColumn]}
+      columns={[titleColumn, destinationColumn, departmentColumn, archivedByColumn, dateColumn('archivedAt', 'Archived On'), archiveReasonColumn]}
       onTitleClick={onView}
       headerAction={
         <div className="flex flex-wrap items-center gap-2">

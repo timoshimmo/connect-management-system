@@ -8,3 +8,4 @@ export { DrawingRegisterLoginPage } from './DrawingRegisterLoginPage';
 export { DrawingRegisterPage } from './DrawingRegisterPage';
 export { CreateUserPage } from './CreateUserPage';
 export { ProfilePage } from './ProfilePage';
+export { DocumentRegisterPage } from './DocumentRegisterPage';
