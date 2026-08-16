@@ -22,6 +22,7 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
   const currentVersion = doc.currentVersion;
 
   const isDrawingRegister = doc.destination === 'Drawing Register';
+  const isDocumentRegister = doc.destination === 'Document Register';
 
   const meta: [string, string][] = [
     ['Doc ID', doc.docId],
@@ -34,6 +35,13 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
           ...(doc.area ? [['Area', doc.area]] : []),
         ] as [string, string][])
       : ([['Type', doc.type ?? '—']] as [string, string][])),
+    ...(isDocumentRegister
+      ? ([
+          ['Revision', doc.revision || '0'],
+          ['ISO Standards', doc.isoStandards.length > 0 ? doc.isoStandards.join(', ') : '—'],
+          ['ISO Clauses', doc.isoClauses || '—'],
+        ] as [string, string][])
+      : []),
     ['Destination', doc.destination],
     ['Version', currentVersion?.versionNumber ?? '—'],
     ['Location', doc.location],

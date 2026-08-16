@@ -1,7 +1,7 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const documentService = require('./document.service');
 const { parsePagination, paginatedResponse } = require('../../common/pagination');
-const { BadRequestError } = require('../../common/errors');
+const { BadRequestError, ForbiddenError } = require('../../common/errors');
 const { buildPublicUrl } = require('../../config/r2');
 
 const list = asyncHandler(async (req, res) => {
@@ -23,6 +23,14 @@ const getOne = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
+  // Document Register documents are Controller-registered controlled
+  // documents (no author/reviewer/approver workflow) — enforced here, not
+  // just by hiding the "Create Document Register Document" button, since
+  // the route itself is also reachable by any 'author'.
+  if (req.body.destination === 'Document Register' && req.user.role !== 'controller') {
+    throw new ForbiddenError('Only a Document Controller can create Document Register documents.');
+  }
+
   const doc = await documentService.createDocument({
     ...req.body,
     authorId: req.user.id,

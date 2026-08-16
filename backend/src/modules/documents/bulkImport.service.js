@@ -1,6 +1,12 @@
 const ExcelJS = require('exceljs');
 const documentService = require('./document.service');
-const { Document, DOCUMENT_TYPES, DOCUMENT_DESTINATIONS } = require('./document.model');
+const {
+  Document,
+  DOCUMENT_TYPES,
+  DOCUMENT_DESTINATIONS,
+  DOCUMENT_TYPE_PREFIXES,
+  ISO_STANDARDS,
+} = require('./document.model');
 const { Department } = require('../departments/department.model');
 const { Discipline } = require('../disciplines/discipline.model');
 const { User } = require('../users/user.model');
@@ -30,6 +36,8 @@ const TEMPLATE_COLUMNS = [
   { header: 'Discipline', key: 'discipline', required: false },
   { header: 'Area', key: 'area', required: false },
   { header: 'Revision', key: 'revision', required: false },
+  { header: 'ISO Standards', key: 'isoStandards', required: false },
+  { header: 'ISO Clauses', key: 'isoClauses', required: false },
 ];
 
 const SAMPLE_ROWS = [
@@ -62,23 +70,44 @@ const SAMPLE_ROWS = [
     discipline: '',
     area: 'Main Site',
     revision: 'B',
+    isoStandards: '',
+    isoClauses: '',
+  },
+  {
+    documentId: 'SMS-MP00002',
+    destination: 'Document Register',
+    department: '',
+    title: 'Sample: QHSE Management System Manual',
+    description: 'Controlled QHSE manual.',
+    fileName: 'QHSE-Manual.pdf',
+    authorName: 'L. Sule',
+    version: '1.0',
+    category: 'Manual',
+    drawingNumber: '',
+    discipline: '',
+    area: '',
+    revision: '0',
+    isoStandards: 'ISO 9001 (Quality), ISO 14001 (Environment)',
+    isoClauses: '4-10',
   },
 ];
 
 const INSTRUCTIONS = [
-  ['Document ID', 'Required. The document number to assign — must not already be in use by another document.'],
-  ['Document Destination', 'Required. Must be exactly "Read Site" or "Drawing Register" (use the dropdown).'],
+  ['Document ID', 'Required. The document number to assign — must not already be in use by another document. For Document Register rows this must also match the selected Document Type\'s numbering format (e.g. a "Manual" must be "SMS-MP" followed by 5 digits, like "SMS-MP00001").'],
+  ['Document Destination', 'Required. Must be exactly "Read Site", "Drawing Register" or "Document Register" (use the dropdown).'],
   ['Department', 'Required. Must exactly match an existing, active department name (use the dropdown).'],
   ['Title', 'Required.'],
   ['Description', 'Optional.'],
   ['File Name', 'Required. Must exactly match the filename of one of the files you upload in Step 2 (case-insensitive).'],
   ['Author', 'Required. Must exactly match the full name of an existing user account (use the dropdown). If more than one account shares that name, the row will fail — use a name that uniquely identifies one account.'],
   ['Version', 'Optional. Freeform label (e.g. "3.2") for the document’s existing version history. Defaults to "1.0" if blank.'],
-  ['Document Type', 'Required only when Destination is "Read Site" (use the dropdown). Leave blank for Drawing Register rows.'],
-  ['Drawing Number', 'Required only when Destination is "Drawing Register". Leave blank for Read Site rows.'],
-  ['Discipline', 'Required only when Destination is "Drawing Register" (use the dropdown). Leave blank for Read Site rows.'],
+  ['Document Type', 'Required when Destination is "Read Site" or "Document Register" (use the dropdown). Leave blank for Drawing Register rows.'],
+  ['Drawing Number', 'Required only when Destination is "Drawing Register". Leave blank otherwise.'],
+  ['Discipline', 'Required only when Destination is "Drawing Register" (use the dropdown). Leave blank otherwise.'],
   ['Area', 'Optional.'],
-  ['Revision', 'Required only when Destination is "Drawing Register". Leave blank for Read Site rows.'],
+  ['Revision', 'Required when Destination is "Drawing Register". Optional (e.g. "0") for Document Register rows. Leave blank for Read Site rows.'],
+  ['ISO Standards', 'Document Register only. Optional. Comma-separated, must exactly match entries from: ' + ISO_STANDARDS.join(', ') + '.'],
+  ['ISO Clauses', 'Document Register only. Optional freeform text, e.g. "4.1-4.2, 6.1.1".'],
   ['', ''],
   ['Import limit', `A single import is limited to ${MAX_ROWS} rows. Split larger batches into multiple imports.`],
   ['Publishing', 'Every row that passes validation is published immediately — bulk import skips the normal draft/review/approval workflow.'],
@@ -274,8 +303,8 @@ async function validateRows(rawRows, context) {
       } else resolved.authorUserId = matches[0]._id;
     }
 
-    if (destination === 'Read Site') {
-      if (!data.category?.trim()) errors.push('Document Type is required for Read Site documents.');
+    if (destination === 'Read Site' || destination === 'Document Register') {
+      if (!data.category?.trim()) errors.push(`Document Type is required for ${destination} documents.`);
       else if (!DOCUMENT_TYPES.includes(data.category.trim())) {
         errors.push(`Document Type must be one of: ${DOCUMENT_TYPES.join(', ')}.`);
       }
@@ -291,12 +320,31 @@ async function validateRows(rawRows, context) {
       if (!data.revision?.trim()) errors.push('Revision is required for Drawing Register documents.');
     }
 
+    if (destination === 'Document Register' && data.isoStandards?.trim()) {
+      const values = data.isoStandards.split(',').map((s) => s.trim()).filter(Boolean);
+      const invalid = values.filter((v) => !ISO_STANDARDS.includes(v));
+      if (invalid.length > 0) {
+        errors.push(`ISO Standards must only contain: ${ISO_STANDARDS.join(', ')}. Found invalid value(s): ${invalid.join(', ')}.`);
+      } else {
+        resolved.isoStandards = values;
+      }
+    }
+
     if (!data.documentId?.trim()) {
       errors.push('Document ID is required.');
     } else {
       const key = data.documentId.trim().toLowerCase();
       if (docIdCounts.get(key) > 1) errors.push(`Document ID "${data.documentId}" is used by more than one row in this sheet.`);
       if (existingDocIds.has(key)) errors.push(`Document ID "${data.documentId}" already exists.`);
+      if (destination === 'Document Register' && data.category?.trim() && DOCUMENT_TYPES.includes(data.category.trim())) {
+        const prefix = DOCUMENT_TYPE_PREFIXES[data.category.trim()];
+        const expectedPattern = new RegExp(`^${prefix}\\d{5}$`);
+        if (prefix && !expectedPattern.test(data.documentId.trim())) {
+          errors.push(
+            `Document ID "${data.documentId}" doesn't match the "${prefix}NNNNN" format required for ${data.category.trim()} documents.`
+          );
+        }
+      }
     }
 
     if (data.drawingNumber?.trim()) {
@@ -325,6 +373,8 @@ async function validateRows(rawRows, context) {
         discipline: data.discipline?.trim() || '',
         area: data.area?.trim() || '',
         revision: data.revision?.trim() || '',
+        isoStandards: data.isoStandards?.trim() || '',
+        isoClauses: data.isoClauses?.trim() || '',
       },
       resolved,
       status: errors.length === 0 ? 'valid' : 'invalid',
@@ -379,13 +429,18 @@ async function commitImport({ rows, files, actorId }) {
       const doc = await documentService.createDocument({
         title: row.data.title,
         department: row.resolved.departmentId,
-        type: row.data.destination === 'Read Site' ? row.data.category : undefined,
+        type:
+          row.data.destination === 'Read Site' || row.data.destination === 'Document Register'
+            ? row.data.category
+            : undefined,
         description: row.data.description,
         destination: row.data.destination,
         drawingNumber: row.data.drawingNumber,
         discipline: row.resolved.disciplineId,
         area: row.data.area,
         revision: row.data.revision,
+        isoStandards: row.resolved.isoStandards || [],
+        isoClauses: row.data.isoClauses,
         authorId: row.resolved.authorUserId,
         file,
         docId: row.data.documentId,
@@ -404,7 +459,12 @@ async function commitImport({ rows, files, actorId }) {
         metadata: { docId: doc.docId, sourceRow: row.rowNumber },
       });
 
-      const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+      const destinationLabels = {
+        'Read Site': 'the Read Site',
+        'Drawing Register': 'the Drawing Register',
+        'Document Register': 'the Document Register',
+      };
+      const destinationLabel = destinationLabels[doc.destination] || 'the Read Site';
       await notifyUser(doc.author, {
         type: 'document_published',
         message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${destinationLabel}.`,

@@ -64,6 +64,11 @@ export function useCreateDocumentMutation() {
       area?: string;
       revision?: string;
       file?: File | null;
+      /** Document Register only. */
+      isoStandards?: string[];
+      isoClauses?: string;
+      /** Document Register only — publishes immediately, skipping the draft/review workflow (backend rejects this for any other destination). */
+      status?: 'Published';
     }) => {
       const form = new FormData();
       form.set('title', payload.title);
@@ -77,11 +82,18 @@ export function useCreateDocumentMutation() {
       if (payload.area) form.set('area', payload.area);
       if (payload.revision) form.set('revision', payload.revision);
       if (payload.file) form.set('file', payload.file);
+      if (payload.isoStandards) payload.isoStandards.forEach((s) => form.append('isoStandards', s));
+      if (payload.isoClauses) form.set('isoClauses', payload.isoClauses);
+      if (payload.status) form.set('status', payload.status);
       return apiUpload<{ document: ApiDocument }>('/documents', form).then((r) => r.document);
     },
     onSuccess: (doc) => {
       invalidate();
-      showSuccess('Document created', `"${doc.title}" was saved as a draft (${doc.docId}).`);
+      if (doc.status === 'Published') {
+        showSuccess('Document registered', `"${doc.title}" was published to the Document Register (${doc.docId}).`);
+      } else {
+        showSuccess('Document created', `"${doc.title}" was saved as a draft (${doc.docId}).`);
+      }
     },
     onError: (err) => showError('Couldn’t create document', errorMessage(err, 'The document could not be saved. Please try again.')),
   });
@@ -99,6 +111,9 @@ export interface UpdateDocumentPayload {
   discipline?: string;
   area?: string;
   revision?: string;
+  /** Document Register only. */
+  isoStandards?: string[];
+  isoClauses?: string;
   /** Only sent alongside `file` — a note on the replacement version, never part of the document's own fields. */
   changeNote?: string;
   file?: File | null;

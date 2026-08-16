@@ -28,6 +28,11 @@ import { UserManagementPanel } from '@/features/users';
 import { DepartmentManagementPanel } from '@/features/departments/DepartmentManagementPanel';
 import { DisciplineManagementPanel } from '@/features/disciplines/DisciplineManagementPanel';
 import { BulkUploadPanel } from '@/features/bulk-upload';
+import {
+  CreateDocumentRegisterDocumentPanel,
+  ManageDocumentRegisterPanel,
+  EditDocumentRegisterModal,
+} from '@/features/document-register';
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
 import { ROLES, ViewKey, CountKey } from '@/data/roles';
@@ -117,6 +122,7 @@ function MSPublishingContent() {
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<ApiDocument | null>(null);
   const [editDoc, setEditDoc] = useState<ApiDocument | null>(null);
+  const [editRegisterDoc, setEditRegisterDoc] = useState<ApiDocument | null>(null);
   const [archiveDoc, setArchiveDoc] = useState<ApiDocument | null>(null);
   const [restoreDoc, setRestoreDoc] = useState<ApiDocument | null>(null);
   const [reassignDoc, setReassignDoc] = useState<ApiDocument | null>(null);
@@ -697,6 +703,19 @@ function MSPublishingContent() {
         <BulkUploadPanel />
       </RoleGuard>
     );
+  } else if (view === 'documentRegisterCreate') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <CreateDocumentRegisterDocumentPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'documentRegisterManage') {
+    const registerDocs = allDocuments.filter((d) => d.destination === 'Document Register' && d.status === 'Published');
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <ManageDocumentRegisterPanel documents={registerDocs} onEdit={setEditRegisterDoc} onArchive={setArchiveDoc} />
+      </RoleGuard>
+    );
   } else if (view === 'dept' && activeFilter) {
     const deptDocs = allDocuments.filter((d) => refName(d.department) === activeFilter);
     const due = deptDocs.filter(isDocumentOverdue);
@@ -898,6 +917,19 @@ function MSPublishingContent() {
             updateDocument.mutate(
               { id: editDoc._id, ...payload },
               { onSuccess: () => setEditDoc(null) }
+            )
+          }
+          isSubmitting={updateDocument.isPending}
+        />
+      )}
+      {editRegisterDoc && (
+        <EditDocumentRegisterModal
+          doc={editRegisterDoc}
+          onClose={() => setEditRegisterDoc(null)}
+          onSave={(payload) =>
+            updateDocument.mutate(
+              { id: editRegisterDoc._id, ...payload },
+              { onSuccess: () => setEditRegisterDoc(null) }
             )
           }
           isSubmitting={updateDocument.isPending}
