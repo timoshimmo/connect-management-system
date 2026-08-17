@@ -9,6 +9,8 @@ interface DepartmentGridProps {
   onContactController: () => void;
   /** False on the Drawing Register page itself, so it doesn't link back to where it already is. */
   showDrawingRegisterLink?: boolean;
+  /** True when the caller renders its own Drawings/Contact Controller action row elsewhere (e.g. moved to the top of the page) — this section then only renders the heading + grid. */
+  hideActionsRow?: boolean;
 }
 
 /**
@@ -22,6 +24,7 @@ export default function DepartmentGrid({
   onSelectDepartment,
   onContactController,
   showDrawingRegisterLink = true,
+  hideActionsRow = false,
 }: DepartmentGridProps) {
   return (
     <section aria-labelledby="browse-by-department-heading" className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
@@ -30,24 +33,26 @@ export default function DepartmentGrid({
           Browse by Department
         </h2>
 
-        <div className="flex flex-col gap-2.5 self-start sm:flex-row sm:self-auto">
-          {FEATURES.drawingRegister && showDrawingRegisterLink && (
-            <Link
-              to="/drawing-register"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+        {!hideActionsRow && (
+          <div className="flex flex-col gap-2.5 self-start sm:flex-row sm:self-auto">
+            {FEATURES.drawingRegister && showDrawingRegisterLink && (
+              <Link
+                to="/drawing-register"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+              >
+                <Squares2X2Icon className="h-4 w-4" aria-hidden="true" />
+                Drawings and Diagrams
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={onContactController}
+              className="inline-flex items-center justify-center rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
             >
-              <Squares2X2Icon className="h-4 w-4" aria-hidden="true" />
-              Drawings and Diagrams
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={onContactController}
-            className="inline-flex items-center justify-center rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
-          >
-            Contact Document Controller
-          </button>
-        </div>
+              Contact Document Controller
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

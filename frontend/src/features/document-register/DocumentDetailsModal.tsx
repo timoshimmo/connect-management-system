@@ -64,7 +64,7 @@ export function DocumentDetailsModal({ doc, onClose }: DocumentDetailsModalProps
           <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Reference No.</p>
-              <p className="mt-1 text-sm font-semibold text-emerald-800">{doc.docId}</p>
+              <p className="mt-1 text-sm font-semibold text-emerald-800">{doc.documentRegisterReference}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Document Type</p>

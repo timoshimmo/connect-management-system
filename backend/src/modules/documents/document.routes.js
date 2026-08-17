@@ -1,11 +1,18 @@
 const express = require('express');
 const controller = require('./document.controller');
 const bulkImportController = require('./bulkImport.controller');
+const documentRegisterBulkImportController = require('./documentRegisterBulkImport.controller');
 const { authenticate } = require('../../middlewares/auth');
 const { requireRole } = require('../../middlewares/permission');
 const { validate } = require('../../middlewares/validate');
 const { upload } = require('../../middlewares/upload');
-const { excelUpload, bulkFilesUpload, MAX_BULK_FILES } = require('../../middlewares/bulkUpload');
+const {
+  excelUpload,
+  bulkFilesUpload,
+  MAX_BULK_FILES,
+  documentRegisterFilesUpload,
+  MAX_DOCUMENT_REGISTER_BULK_FILES,
+} = require('../../middlewares/bulkUpload');
 const {
   createDocumentSchema,
   updateDocumentSchema,
@@ -134,6 +141,71 @@ router.post(
   requireRole('controller'),
   bulkFilesUpload.array('files', MAX_BULK_FILES),
   bulkImportController.commit
+);
+
+/**
+ * Document Register bulk import (Document Controller only) — a dedicated
+ * template/parse/commit flow matching the Controller's own existing QHSE
+ * register file format (Reference No. / Document Title / Version (Rev.) /
+ * Issue Date / Document Type / ISO Clauses Covered / File Name — no
+ * Department or Author column). Separate from /bulk-import/* above, which
+ * keeps handling Read Site/Drawing Register (and ad-hoc Document Register
+ * rows) via its own generic multi-destination sheet, unchanged.
+ *
+ * @openapi
+ * /documents/document-register-bulk-import/template:
+ *   get:
+ *     tags: [Documents]
+ *     summary: Download the Document Register bulk-import Excel template (Document Controller only)
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The .xlsx template file }
+ * /documents/document-register-bulk-import/parse:
+ *   post:
+ *     tags: [Documents]
+ *     summary: Parse and validate an uploaded Document Register Excel sheet, without importing anything (Document Controller only)
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+ *     responses:
+ *       200: { description: Per-row validation results }
+ * /documents/document-register-bulk-import/commit:
+ *   post:
+ *     tags: [Documents]
+ *     summary: Import the given Document Register rows + matching files, publishing each valid row directly (Document Controller only)
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [rows, files]
+ *             properties:
+ *               rows: { type: string, description: 'JSON-encoded array of { rowNumber, data }' }
+ *               files: { type: array, items: { type: string, format: binary } }
+ *     responses:
+ *       200: { description: 'Import summary: { total, succeeded, failed, skipped, results }' }
+ */
+router.get(
+  '/document-register-bulk-import/template',
+  requireRole('controller'),
+  documentRegisterBulkImportController.template
+);
+router.post(
+  '/document-register-bulk-import/parse',
+  requireRole('controller'),
+  excelUpload.single('file'),
+  documentRegisterBulkImportController.parse
+);
+router.post(
+  '/document-register-bulk-import/commit',
+  requireRole('controller'),
+  documentRegisterFilesUpload.array('files', MAX_DOCUMENT_REGISTER_BULK_FILES),
+  documentRegisterBulkImportController.commit
 );
 
 /**

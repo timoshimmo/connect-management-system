@@ -23,9 +23,9 @@ interface DocumentRegisterTableProps {
 export function DocumentRegisterTable({ documents, isLoading, onView }: DocumentRegisterTableProps) {
   const columns: DataTableColumn<ApiDocument>[] = [
     {
-      key: 'docId',
+      key: 'documentRegisterReference',
       header: 'Reference',
-      render: (doc) => <span className="text-sm font-semibold text-gray-900">{doc.docId}</span>,
+      render: (doc) => <span className="text-sm font-semibold text-gray-900">{doc.documentRegisterReference}</span>,
     },
     {
       key: 'title',
@@ -35,7 +35,11 @@ export function DocumentRegisterTable({ documents, isLoading, onView }: Document
     {
       key: 'type',
       header: 'Type',
-      render: (doc) => <span className="text-sm text-gray-700">{doc.type ?? '—'}</span>,
+      render: (doc) => (
+        <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+          {doc.type ?? '—'}
+        </span>
+      ),
     },
     {
       key: 'isoClauses',

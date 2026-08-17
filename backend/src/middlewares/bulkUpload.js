@@ -30,4 +30,21 @@ const bulkFilesUpload = multer({
   fileFilter: documentFileFilter,
 });
 
-module.exports = { excelUpload, bulkFilesUpload, MAX_BULK_FILES };
+// Document Register-specific: a real company register can run well past the
+// generic importer's 50-row cap (see documentRegisterBulkImport.service.js's
+// own higher MAX_ROWS) — a separate multer instance so raising this limit
+// never affects the generic Read Site/Drawing Register importer above.
+const MAX_DOCUMENT_REGISTER_BULK_FILES = 150;
+const documentRegisterFilesUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE, files: MAX_DOCUMENT_REGISTER_BULK_FILES, fieldSize: 5 * 1024 * 1024 },
+  fileFilter: documentFileFilter,
+});
+
+module.exports = {
+  excelUpload,
+  bulkFilesUpload,
+  MAX_BULK_FILES,
+  documentRegisterFilesUpload,
+  MAX_DOCUMENT_REGISTER_BULK_FILES,
+};

@@ -38,7 +38,12 @@ const sections = [
     description: 'Recent policy updates',
   },
   { to: '/read-site?type=Form', icon: ClipboardCheck, label: 'Forms', description: 'Fillable templates' },
-  { to: '/document-register', icon: FolderLock, label: 'Document Register', description: 'Controlled documents' },
+  {
+    to: '/document-register',
+    icon: FolderLock,
+    label: 'QHSE Management System — Document Register',
+    description: 'Controlled documents',
+  },
 ];
 
 export function ReadSiteCard() {

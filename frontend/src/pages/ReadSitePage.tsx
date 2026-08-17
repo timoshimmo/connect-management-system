@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Squares2X2Icon } from '@heroicons/react/24/outline';
+import { FEATURES } from '@/config/features';
 import PageHeader from '../components/ReadSite/PageHeader';
 import SearchBar from '../components/ReadSite/SearchBar';
 import DepartmentGrid from '../components/ReadSite/DepartmentGrid';
@@ -152,7 +154,26 @@ export function ReadSitePage() {
         </div>
       </section>
 
-      <div className="pt-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-2.5 px-4 pt-6 sm:flex-row sm:justify-end sm:px-8">
+        {FEATURES.drawingRegister && (
+          <Link
+            to="/drawing-register"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+          >
+            <Squares2X2Icon className="h-4 w-4" aria-hidden="true" />
+            Drawings and Diagrams
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={() => setContactOpen(true)}
+          className="inline-flex items-center justify-center rounded-lg border border-emerald-800 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors duration-200 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+        >
+          Contact Document Controller
+        </button>
+      </div>
+
+      <div className="pt-4">
         <DocumentRegisterCard searchQuery={query} />
       </div>
 
@@ -160,6 +181,7 @@ export function ReadSitePage() {
         departments={departments}
         onSelectDepartment={handleSelectDepartment}
         onContactController={() => setContactOpen(true)}
+        hideActionsRow
       />
 
       <motion.section

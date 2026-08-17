@@ -4,7 +4,7 @@ const {
   Document,
   DOCUMENT_TYPES,
   DOCUMENT_DESTINATIONS,
-  DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
   ISO_STANDARDS,
 } = require('./document.model');
 const { Department } = require('../departments/department.model');
@@ -23,7 +23,7 @@ const MAX_ROWS = 50;
  * columns in a hand-edited sheet don't break parsing.
  */
 const TEMPLATE_COLUMNS = [
-  { header: 'Document ID', key: 'documentId', required: true },
+  { header: 'Document ID / Reference', key: 'documentId', required: true },
   { header: 'Document Destination', key: 'destination', required: true },
   { header: 'Department', key: 'department', required: true },
   { header: 'Title', key: 'title', required: true },
@@ -74,7 +74,7 @@ const SAMPLE_ROWS = [
     isoClauses: '',
   },
   {
-    documentId: 'SMS-MP00002',
+    documentId: 'STAC-QHSE-MAN-002',
     destination: 'Document Register',
     department: '',
     title: 'Sample: QHSE Management System Manual',
@@ -93,7 +93,7 @@ const SAMPLE_ROWS = [
 ];
 
 const INSTRUCTIONS = [
-  ['Document ID', 'Required. The document number to assign — must not already be in use by another document. For Document Register rows this must also match the selected Document Type\'s numbering format (e.g. a "Manual" must be "SMS-MP" followed by 5 digits, like "SMS-MP00001").'],
+  ['Document ID / Reference', 'Required. For Read Site and Drawing Register rows: the SMS document number to assign (existing format, e.g. "SMS-PR00001") — must not already be in use. For Document Register rows: the Document Register Reference, in "STAC-QHSE-[TYPE]-[3-digit]" format matching the selected Document Type (e.g. a "Manual" must be "STAC-QHSE-MAN-001") — must not already be in use. An internal SMS number is still generated automatically for Document Register rows; you don\'t supply it here.'],
   ['Document Destination', 'Required. Must be exactly "Read Site", "Drawing Register" or "Document Register" (use the dropdown).'],
   ['Department', 'Required. Must exactly match an existing, active department name (use the dropdown).'],
   ['Title', 'Required.'],
@@ -243,7 +243,17 @@ async function validateRows(rawRows, context) {
 
   const { departmentByName, disciplineByName } = context;
 
+  // The "Document ID / Reference" column means different things depending on
+  // the row's own Destination — an SMS docId for Read Site/Drawing Register,
+  // a Document Register Reference (STAC-QHSE-...) for Document Register —
+  // so uniqueness (both against the DB and within this sheet) is tracked in
+  // two entirely separate pools, keyed by which meaning applies to that row.
   const existingDocIds = new Set((await Document.find({}, 'docId')).map((d) => d.docId.toLowerCase()));
+  const existingRegisterRefs = new Set(
+    (await Document.find({ documentRegisterReference: { $exists: true } }, 'documentRegisterReference')).map((d) =>
+      d.documentRegisterReference.toLowerCase()
+    )
+  );
   const existingDrawingNumbers = new Set(
     (await Document.find({ destination: 'Drawing Register', drawingNumber: { $ne: '' } }, 'drawingNumber')).map((d) =>
       d.drawingNumber.trim().toLowerCase()
@@ -251,10 +261,15 @@ async function validateRows(rawRows, context) {
   );
 
   const docIdCounts = new Map();
+  const registerRefCounts = new Map();
   const drawingNumberCounts = new Map();
   const fileNameCounts = new Map();
   for (const { data } of rawRows) {
-    if (data.documentId) docIdCounts.set(data.documentId.toLowerCase(), (docIdCounts.get(data.documentId.toLowerCase()) || 0) + 1);
+    if (data.documentId) {
+      const key = data.documentId.trim().toLowerCase();
+      const counts = data.destination?.trim() === 'Document Register' ? registerRefCounts : docIdCounts;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
     if (data.drawingNumber) {
       const key = data.drawingNumber.trim().toLowerCase();
       drawingNumberCounts.set(key, (drawingNumberCounts.get(key) || 0) + 1);
@@ -331,20 +346,26 @@ async function validateRows(rawRows, context) {
     }
 
     if (!data.documentId?.trim()) {
-      errors.push('Document ID is required.');
+      errors.push('Document ID / Reference is required.');
+    } else if (destination === 'Document Register') {
+      const key = data.documentId.trim().toLowerCase();
+      if (registerRefCounts.get(key) > 1) {
+        errors.push(`Document Register Reference "${data.documentId}" is used by more than one row in this sheet.`);
+      }
+      if (existingRegisterRefs.has(key)) errors.push(`Document Register Reference "${data.documentId}" already exists.`);
+      if (data.category?.trim() && DOCUMENT_TYPES.includes(data.category.trim())) {
+        const prefix = DOCUMENT_REGISTER_TYPE_PREFIXES[data.category.trim()];
+        const expectedPattern = new RegExp(`^${prefix}\\d{3}$`);
+        if (prefix && !expectedPattern.test(data.documentId.trim())) {
+          errors.push(
+            `Document Register Reference "${data.documentId}" doesn't match the "${prefix}NNN" format required for ${data.category.trim()} documents.`
+          );
+        }
+      }
     } else {
       const key = data.documentId.trim().toLowerCase();
       if (docIdCounts.get(key) > 1) errors.push(`Document ID "${data.documentId}" is used by more than one row in this sheet.`);
       if (existingDocIds.has(key)) errors.push(`Document ID "${data.documentId}" already exists.`);
-      if (destination === 'Document Register' && data.category?.trim() && DOCUMENT_TYPES.includes(data.category.trim())) {
-        const prefix = DOCUMENT_TYPE_PREFIXES[data.category.trim()];
-        const expectedPattern = new RegExp(`^${prefix}\\d{5}$`);
-        if (prefix && !expectedPattern.test(data.documentId.trim())) {
-          errors.push(
-            `Document ID "${data.documentId}" doesn't match the "${prefix}NNNNN" format required for ${data.category.trim()} documents.`
-          );
-        }
-      }
     }
 
     if (data.drawingNumber?.trim()) {
@@ -443,7 +464,11 @@ async function commitImport({ rows, files, actorId }) {
         isoClauses: row.data.isoClauses,
         authorId: row.resolved.authorUserId,
         file,
-        docId: row.data.documentId,
+        // Document Register rows: the sheet's column supplies the Document
+        // Register Reference, not the SMS docId — docId is auto-generated
+        // (see createDocument), same as the single-document create form.
+        docId: row.data.destination === 'Document Register' ? undefined : row.data.documentId,
+        documentRegisterReference: row.data.destination === 'Document Register' ? row.data.documentId : undefined,
         status: 'Published',
         publishedAt: now,
         nextReviewDate: new Date(now.getTime() + ONE_YEAR_MS),
@@ -465,13 +490,17 @@ async function commitImport({ rows, files, actorId }) {
         'Document Register': 'the Document Register',
       };
       const destinationLabel = destinationLabels[doc.destination] || 'the Read Site';
+      // Document Register documents show their documentRegisterReference
+      // (STAC-QHSE-...) as the primary identifier everywhere, not the SMS
+      // docId that's still generated alongside it for internal use.
+      const displayedReference = doc.documentRegisterReference || doc.docId;
       await notifyUser(doc.author, {
         type: 'document_published',
-        message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${destinationLabel}.`,
+        message: `"${doc.title}" (${displayedReference}) has been published and is now live on ${destinationLabel}.`,
         relatedDocument: doc._id,
       });
 
-      results.push({ row: row.rowNumber, status: 'succeeded', docId: doc.docId });
+      results.push({ row: row.rowNumber, status: 'succeeded', docId: displayedReference });
       succeeded += 1;
     } catch (err) {
       results.push({ row: row.rowNumber, status: 'failed', error: err.message });

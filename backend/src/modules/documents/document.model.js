@@ -43,6 +43,27 @@ const DOCUMENT_TYPE_PREFIXES = {
 };
 
 /**
+ * The Document Register's own reference convention — completely independent
+ * of the SMS docId scheme above (own prefixes, own 3-digit sequence, own
+ * Counter entries keyed by these prefix strings). This is what the Document
+ * Register displays as its primary reference; docId (the SMS number) keeps
+ * being generated too, for internal/legacy use elsewhere in the system, but
+ * is never shown as the Document Register's reference. See
+ * document.service.js's nextDocumentRegisterReference.
+ */
+const DOCUMENT_REGISTER_TYPE_PREFIXES = {
+  Manual: 'STAC-QHSE-MAN-',
+  Policy: 'STAC-QHSE-PO-',
+  Procedure: 'STAC-QHSE-PRO-',
+  Standard: 'STAC-QHSE-ST-',
+  Goal: 'STAC-QHSE-GL-',
+  'Org Chart': 'STAC-QHSE-OC-',
+  'Policy Change': 'STAC-QHSE-PC-',
+  'Functional Description': 'STAC-QHSE-FD-',
+  Form: 'STAC-QHSE-FR-',
+};
+
+/**
  * SMS-PO00001–SMS-PO00003 are reserved for special company documents
  * created manually later — automatic Policy numbering starts at
  * SMS-PO00004. Every other type starts at 00001. See document.service.js's
@@ -71,8 +92,24 @@ const DOCUMENT_DESTINATIONS = ['Read Site', 'Drawing Register', 'Document Regist
 const documentSchema = new mongoose.Schema(
   {
     docId: { type: String, required: true, unique: true },
+    // Document Register's own displayed reference (STAC-QHSE-[TYPE]-[NNN]) —
+    // present only on Document Register documents. Deliberately no `default`:
+    // a sparse unique index only excludes fields that are *missing*, not
+    // fields explicitly `null` — a `default: null` here would make every
+    // Read Site/Drawing Register document collide on `null` (hit and fixed
+    // once already for `microsoftId`; not repeating that mistake).
+    documentRegisterReference: { type: String, unique: true, sparse: true, trim: true },
     title: { type: String, required: true, trim: true },
-    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
+    // Optional for Document Register documents only — the Document Register
+    // is organized purely by Document Type (see DOCUMENT_REGISTER_TYPE_PREFIXES),
+    // never by department. Read Site/Drawing Register still require one.
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department',
+      required: function () {
+        return this.destination !== 'Document Register';
+      },
+    },
     // Required for Read Site documents, not applicable to Drawing Register
     // ones (enforced in document.validation.js, conditional on destination —
     // not a blanket Mongoose `required` since one schema now serves both).
@@ -120,6 +157,7 @@ module.exports = {
   DOCUMENT_STATUSES,
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
   POLICY_RESERVED_SEQUENCE,
   DOCUMENT_LOCATIONS,
   DOCUMENT_DESTINATIONS,
