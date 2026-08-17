@@ -7,38 +7,52 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
  * the Search button and onSearch callback exist for parity with the
  * reference design and any future "submit search" analytics hook.
  *
+ * The Department select is optional — pass `departments` to show it (Read
+ * Site and Drawing Register both do); omit it (as the Document Register
+ * does, which has no department-based browsing) and it doesn't render.
+ *
  * The Discipline select is Drawing Register-only — pass `discipline`,
  * `onDisciplineChange` and `disciplines` to show it (see
  * DrawingRegisterPage.tsx); omit them (as ReadSitePage.tsx does) and it
  * doesn't render, since Read Site documents never have a discipline.
  *
+ * The ISO Standard select is Document Register-only — pass `isoStandard`,
+ * `onIsoStandardChange` and `isoStandards` to show it; omit them and it
+ * doesn't render, since only Document Register documents carry ISO metadata.
+ *
  * @param {{
  *   query: string,
  *   onQueryChange: (value: string) => void,
- *   department: string,
- *   onDepartmentChange: (value: string) => void,
- *   departments: { id: string, name: string }[],
+ *   department?: string,
+ *   onDepartmentChange?: (value: string) => void,
+ *   departments?: { id: string, name: string }[] | null,
  *   type: string,
  *   onTypeChange: (value: string) => void,
  *   types: string[],
  *   discipline?: string,
  *   onDisciplineChange?: (value: string) => void,
  *   disciplines?: string[] | null,
+ *   isoStandard?: string,
+ *   onIsoStandardChange?: (value: string) => void,
+ *   isoStandards?: string[] | null,
  *   onSearch: () => void,
  * }} props
  */
 export default function SearchBar({
   query,
   onQueryChange,
-  department,
-  onDepartmentChange,
-  departments,
+  department = 'all',
+  onDepartmentChange = () => {},
+  departments = null,
   type,
   onTypeChange,
   types,
   discipline = 'all',
   onDisciplineChange = () => {},
   disciplines = null,
+  isoStandard = 'all',
+  onIsoStandardChange = () => {},
+  isoStandards = null,
   onSearch,
 }) {
   return (
@@ -58,19 +72,21 @@ export default function SearchBar({
         />
       </div>
 
-      <select
-        value={department}
-        onChange={(event) => onDepartmentChange(event.target.value)}
-        aria-label="Filter by department"
-        className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/40"
-      >
-        <option value="all">All Departments</option>
-        {departments.map((dept) => (
-          <option key={dept.id} value={dept.id}>
-            {dept.name}
-          </option>
-        ))}
-      </select>
+      {departments && (
+        <select
+          value={department}
+          onChange={(event) => onDepartmentChange(event.target.value)}
+          aria-label="Filter by department"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/40"
+        >
+          <option value="all">All Departments</option>
+          {departments.map((dept) => (
+            <option key={dept.id} value={dept.id}>
+              {dept.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       <select
         value={type}
@@ -97,6 +113,22 @@ export default function SearchBar({
           {disciplines.map((d) => (
             <option key={d} value={d}>
               {d}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {isoStandards && (
+        <select
+          value={isoStandard}
+          onChange={(event) => onIsoStandardChange(event.target.value)}
+          aria-label="Filter by ISO standard"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/40"
+        >
+          <option value="all">All ISO Standards</option>
+          {isoStandards.map((s) => (
+            <option key={s} value={s}>
+              {s}
             </option>
           ))}
         </select>

@@ -13,6 +13,11 @@ const AUDIT_ACTIONS = [
   'preview',
   'delete',
   'reassign',
+  'bulk_import',
+  'sso_login',
+  'sso_signup',
+  'sso_link',
+  'sso_unlink',
 ];
 
 const auditLogSchema = new mongoose.Schema(

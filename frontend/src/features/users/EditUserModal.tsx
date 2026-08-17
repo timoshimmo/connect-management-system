@@ -30,7 +30,8 @@ interface FormState {
   lastName: string;
   email: string;
   department: string;
-  role: ApiRole;
+  /** Null = "Unassigned" — a first-time Microsoft SSO signup awaiting a role. */
+  role: ApiRole | null;
   jobTitle: string;
   status: ApiUserStatus;
 }
@@ -183,18 +184,22 @@ export function EditUserModal({ user, isOwnAccount, onClose, onSave, isSubmittin
               {errors.department && <p className="mt-1 text-xs text-red-600">{errors.department}</p>}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Role *</label>
+              <label className="mb-1 block text-xs font-semibold text-gray-600">Role</label>
               <select
-                value={form.role}
-                onChange={(e) => setField('role', e.target.value as ApiRole)}
+                value={form.role ?? ''}
+                onChange={(e) => setField('role', e.target.value ? (e.target.value as ApiRole) : null)}
                 className={fieldClasses('role')}
               >
+                <option value="">Unassigned</option>
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
                 ))}
               </select>
+              {form.role === null && (
+                <p className="mt-1 text-xs text-amber-600">Unassigned users can sign in but have no permissions.</p>
+              )}
             </div>
           </div>
 

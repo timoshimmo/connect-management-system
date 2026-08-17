@@ -10,6 +10,8 @@ import {
   DrawingRegisterLoginPage,
   DrawingRegisterPage,
   CreateUserPage,
+  ProfilePage,
+  DocumentRegisterPage,
 } from '@/pages';
 import { useAppSelector } from '@/hooks';
 import { FEATURES } from '@/config/features';
@@ -60,6 +62,10 @@ export const router = createBrowserRouter([
         path: '/read-site/:department',
         element: <ReadSitePage />,
       },
+      {
+        path: '/document-register',
+        element: <DocumentRegisterPage />,
+      },
       // Gated by FEATURES.drawingRegister (see src/config/features.ts) —
       // flip to false to hide the module without deleting it.
       ...(FEATURES.drawingRegister
@@ -79,6 +85,10 @@ export const router = createBrowserRouter([
   {
     path: '/users/new',
     element: <CreateUserPage />,
+  },
+  {
+    path: '/profile',
+    element: <ProfilePage />,
   },
   ...(FEATURES.drawingRegister
     ? [

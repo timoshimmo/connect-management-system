@@ -8,11 +8,16 @@ export interface ApiUser {
   id: string;
   name: string;
   email: string;
-  role: ApiRole;
+  /** Null for a first-time Microsoft SSO signup awaiting a Controller to assign one — see MSPublishingPage.tsx. */
+  role: ApiRole | null;
   status: ApiUserStatus;
   jobTitle: string;
   department: { id: string; name: string; code: string } | string | null;
   createdAt: string;
+  /** Whether this account can sign in with email+password (may be false for an SSO-only account). */
+  hasPassword: boolean;
+  /** Whether a Microsoft account is linked — see the Authentication section on the Profile page. */
+  microsoftLinked: boolean;
 }
 
 export interface ApiUserRef {
@@ -97,13 +102,19 @@ export type ApiDocumentType =
 export type ApiDocumentLocation = 'Onshore' | 'Offshore – Mayo ABO' | 'Both';
 
 /** Where the document is published once approved — see document.model.js. */
-export type ApiDocumentDestination = 'Read Site' | 'Drawing Register';
+export type ApiDocumentDestination = 'Read Site' | 'Drawing Register' | 'Document Register';
+
+/** ISO standards a Document Register document can be tagged against — see document.model.js's ISO_STANDARDS. */
+export type ApiIsoStandard = 'ISO 9001 (Quality)' | 'ISO 14001 (Environment)' | 'ISO 45001 (OH&S)';
 
 export interface ApiDocument {
   _id: string;
   docId: string;
+  /** Document Register's own displayed reference (STAC-QHSE-[TYPE]-[NNN]) — present only on Document Register documents. Never `docId` (the SMS number) — see document.model.js. */
+  documentRegisterReference?: string;
   title: string;
-  department: ApiDepartmentRef | string;
+  /** Absent (null) only for Document Register documents — that destination is organized by Type, not Department. */
+  department: ApiDepartmentRef | string | null;
   /** Only required for Read Site documents — Drawing Register documents don't set this. */
   type: ApiDocumentType | null;
   status: ApiDocumentStatus;
@@ -118,7 +129,11 @@ export interface ApiDocument {
   drawingNumber: string;
   discipline: ApiDisciplineRef | string | null;
   area: string;
+  /** Drawing Register: freeform revision string. Document Register: same field, e.g. "0", "Rev A". */
   revision: string;
+  /** Document Register-only metadata — empty for Read Site/Drawing Register documents. */
+  isoStandards: ApiIsoStandard[];
+  isoClauses: string;
   notes: string;
   returned: boolean;
   publishedAt: string | null;
@@ -128,6 +143,94 @@ export interface ApiDocument {
   archiveReason: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Row shape shared by /documents/bulk-import/parse and /commit — see backend/src/modules/documents/bulkImport.service.js. */
+export interface ApiBulkImportRowData {
+  documentId: string;
+  destination: ApiDocumentDestination | '';
+  department: string;
+  title: string;
+  description: string;
+  fileName: string;
+  authorName: string;
+  version: string;
+  category: ApiDocumentType | '';
+  drawingNumber: string;
+  discipline: string;
+  area: string;
+  revision: string;
+}
+
+export interface ApiBulkImportRow {
+  rowNumber: number;
+  data: ApiBulkImportRowData;
+  status: 'valid' | 'invalid';
+  errors: string[];
+}
+
+export interface ApiBulkImportParseResult {
+  rows: ApiBulkImportRow[];
+  summary: { total: number; valid: number; invalid: number };
+}
+
+export interface ApiBulkImportResultRow {
+  row: number;
+  status: 'succeeded' | 'failed' | 'skipped';
+  docId?: string;
+  error?: string;
+}
+
+export interface ApiBulkImportCommitResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  results: ApiBulkImportResultRow[];
+}
+
+/**
+ * Row shape shared by /documents/document-register-bulk-import/parse and
+ * /commit — see backend/src/modules/documents/documentRegisterBulkImport.service.js.
+ * Deliberately no `destination`/`department`/`authorName` fields: this
+ * dedicated template is Document Register-only (organized by Type, not
+ * Department) and always registers under the importing Controller.
+ */
+export interface ApiDocumentRegisterBulkImportRowData {
+  referenceNo: string;
+  title: string;
+  revision: string;
+  issueDate: string;
+  category: ApiDocumentType | '';
+  isoClauses: string;
+  fileName: string;
+}
+
+export interface ApiDocumentRegisterBulkImportRow {
+  rowNumber: number;
+  data: ApiDocumentRegisterBulkImportRowData;
+  status: 'valid' | 'invalid';
+  errors: string[];
+}
+
+export interface ApiDocumentRegisterBulkImportParseResult {
+  rows: ApiDocumentRegisterBulkImportRow[];
+  summary: { total: number; valid: number; invalid: number };
+}
+
+/** Same shape as ApiBulkImportCommitResult so the existing ImportSummary component can be reused as-is. */
+export type ApiDocumentRegisterBulkImportCommitResult = ApiBulkImportCommitResult;
+
+/** GET /document-register/types — live counts for the Document Type filter sidebar. */
+export interface ApiDocumentRegisterTypeCount {
+  type: ApiDocumentType;
+  count: number;
+}
+
+/** GET /document-register/iso-standards — live counts for the ISO Standard filter sidebar. */
+export interface ApiDocumentRegisterIsoCount {
+  standard: ApiIsoStandard;
+  count: number;
 }
 
 export interface ApiComment {

@@ -23,9 +23,11 @@ const DOCUMENT_TYPES = [
 ];
 
 /**
- * Doc ID prefix per type (Read Site documents only — Drawing Register
- * documents use their own user-entered `drawingNumber` field instead and
- * keep the department/year docId scheme, since they have no `type`). See
+ * Doc ID prefix per type — used by any document that has a `type` (Read
+ * Site and Document Register documents; they share one sequence per type,
+ * regardless of which of the two registered it). Drawing Register documents
+ * use their own user-entered `drawingNumber` field instead and keep the
+ * department/year docId scheme, since they have no `type`. See
  * document.service.js's nextDocIdForType.
  */
 const DOCUMENT_TYPE_PREFIXES = {
@@ -41,28 +43,73 @@ const DOCUMENT_TYPE_PREFIXES = {
 };
 
 /**
- * SMS-PO-0001–0003 are reserved for special company documents created
- * manually later — automatic Policy numbering starts at 0004. Every other
- * type starts at 001. See nextDocIdForType.
+ * The Document Register's own reference convention — completely independent
+ * of the SMS docId scheme above (own prefixes, own 3-digit sequence, own
+ * Counter entries keyed by these prefix strings). This is what the Document
+ * Register displays as its primary reference; docId (the SMS number) keeps
+ * being generated too, for internal/legacy use elsewhere in the system, but
+ * is never shown as the Document Register's reference. See
+ * document.service.js's nextDocumentRegisterReference.
+ */
+const DOCUMENT_REGISTER_TYPE_PREFIXES = {
+  Manual: 'STAC-QHSE-MAN-',
+  Policy: 'STAC-QHSE-PO-',
+  Procedure: 'STAC-QHSE-PRO-',
+  Standard: 'STAC-QHSE-ST-',
+  Goal: 'STAC-QHSE-GL-',
+  'Org Chart': 'STAC-QHSE-OC-',
+  'Policy Change': 'STAC-QHSE-PC-',
+  'Functional Description': 'STAC-QHSE-FD-',
+  Form: 'STAC-QHSE-FR-',
+};
+
+/**
+ * SMS-PO00001–SMS-PO00003 are reserved for special company documents
+ * created manually later — automatic Policy numbering starts at
+ * SMS-PO00004. Every other type starts at 00001. See document.service.js's
+ * nextSequence/nextDocIdForType.
  */
 const POLICY_RESERVED_SEQUENCE = 3;
 
 const DOCUMENT_LOCATIONS = ['Onshore', 'Offshore – Mayo ABO', 'Both'];
 
+/** ISO standards a Document Register document can be tagged against — see document.validation.js. */
+const ISO_STANDARDS = ['ISO 9001 (Quality)', 'ISO 14001 (Environment)', 'ISO 45001 (OH&S)'];
+
 /**
  * Where a document is published once approved. Read Site is the public,
  * unauthenticated storefront; Drawing Register is a separately-authenticated
- * storefront for the same underlying Document/DocumentVersion pipeline — see
- * readSite.service.js, which both /read-site and /drawing-register routes
- * call with a different `destination` filter.
+ * storefront for the same underlying Document/DocumentVersion pipeline;
+ * Document Register is a third public, unauthenticated storefront for
+ * Controller-registered controlled QHSE/Management System documents (no
+ * author/reviewer/approver workflow — created directly as Published). See
+ * readSite.service.js (Read Site + Document Register) and
+ * drawingRegisterContent.controller.js (Drawing Register), each calling the
+ * shared listing functions with a different `destination` filter.
  */
-const DOCUMENT_DESTINATIONS = ['Read Site', 'Drawing Register'];
+const DOCUMENT_DESTINATIONS = ['Read Site', 'Drawing Register', 'Document Register'];
 
 const documentSchema = new mongoose.Schema(
   {
     docId: { type: String, required: true, unique: true },
+    // Document Register's own displayed reference (STAC-QHSE-[TYPE]-[NNN]) —
+    // present only on Document Register documents. Deliberately no `default`:
+    // a sparse unique index only excludes fields that are *missing*, not
+    // fields explicitly `null` — a `default: null` here would make every
+    // Read Site/Drawing Register document collide on `null` (hit and fixed
+    // once already for `microsoftId`; not repeating that mistake).
+    documentRegisterReference: { type: String, unique: true, sparse: true, trim: true },
     title: { type: String, required: true, trim: true },
-    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
+    // Optional for Document Register documents only — the Document Register
+    // is organized purely by Document Type (see DOCUMENT_REGISTER_TYPE_PREFIXES),
+    // never by department. Read Site/Drawing Register still require one.
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department',
+      required: function () {
+        return this.destination !== 'Document Register';
+      },
+    },
     // Required for Read Site documents, not applicable to Drawing Register
     // ones (enforced in document.validation.js, conditional on destination —
     // not a blanket Mongoose `required` since one schema now serves both).
@@ -84,6 +131,10 @@ const documentSchema = new mongoose.Schema(
     area: { type: String, default: '' },
     revision: { type: String, default: '' },
     notes: { type: String, default: '' },
+    // Document Register-only metadata — optional even there ("where
+    // applicable" per spec), never used by Read Site/Drawing Register docs.
+    isoStandards: { type: [String], enum: ISO_STANDARDS, default: [] },
+    isoClauses: { type: String, default: '', trim: true },
     // True while this Draft is a reviewer hand-back rather than a fresh,
     // never-submitted draft — lets the frontend tell "My Drafts" and
     // "Returned to Me" apart. Cleared again on submit.
@@ -106,7 +157,9 @@ module.exports = {
   DOCUMENT_STATUSES,
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
   POLICY_RESERVED_SEQUENCE,
   DOCUMENT_LOCATIONS,
   DOCUMENT_DESTINATIONS,
+  ISO_STANDARDS,
 };

@@ -1,17 +1,40 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAppDispatch } from '@/hooks';
 import { sessionEstablished } from '@/store/slices/authSlice';
-import { useLoginMutation } from '@/features/auth/hooks';
+import { useLoginMutation, useMicrosoftSsoEnabledQuery, SSO_ERROR_MESSAGES } from '@/features/auth/hooks';
+import { useToast } from '@/features/toast';
+import { ApiError, API_BASE_URL } from '@/lib/apiClient';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const loginMutation = useLoginMutation();
+  const { data: ssoEnabled } = useMicrosoftSsoEnabledQuery();
+  const { showError } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // A failed Microsoft sign-in redirects here with a short error code —
+  // see auth/microsoft.controller.js's callback, which never puts raw
+  // backend/library error text in the URL.
+  useEffect(() => {
+    const ssoError = searchParams.get('ssoError');
+    if (!ssoError) return;
+    showError('Microsoft sign-in failed', SSO_ERROR_MESSAGES[ssoError] ?? SSO_ERROR_MESSAGES.unknown);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('ssoError');
+        return next;
+      },
+      { replace: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function signIn(loginEmail: string, loginPassword: string) {
     loginMutation.mutate(
@@ -24,6 +47,9 @@ export function LoginPage() {
       }
     );
   }
+
+  const loginErrorMessage =
+    loginMutation.error instanceof ApiError ? loginMutation.error.message : 'Invalid email or password.';
 
   return (
     <div className="flex min-h-[calc(100vh-73px)] items-center justify-center px-4 py-12">
@@ -46,6 +72,23 @@ export function LoginPage() {
           </div>
 
           <div className="p-6">
+            {ssoEnabled && (
+              <>
+                <a
+                  href={`${API_BASE_URL}/auth/microsoft/start`}
+                  className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <MicrosoftLogo />
+                  Sign in with Microsoft
+                </a>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-400">or</span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+              </>
+            )}
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -92,7 +135,7 @@ export function LoginPage() {
               </div>
 
               {loginMutation.isError && (
-                <p className="mb-4 text-sm text-red-600">Invalid email or password.</p>
+                <p className="mb-4 text-sm text-red-600">{loginErrorMessage}</p>
               )}
 
               <button
@@ -107,5 +150,16 @@ export function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function MicrosoftLogo() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+    </svg>
   );
 }

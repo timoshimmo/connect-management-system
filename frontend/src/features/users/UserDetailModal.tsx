@@ -1,5 +1,5 @@
-import { X } from 'lucide-react';
-import type { ApiUser } from '@/lib/apiTypes';
+import { X, KeyRound, ShieldCheck } from 'lucide-react';
+import type { ApiRole, ApiUser } from '@/lib/apiTypes';
 
 interface UserDetailModalProps {
   user: ApiUser;
@@ -15,7 +15,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const ROLE_LABELS: Record<ApiUser['role'], string> = {
+const ROLE_LABELS: Record<ApiRole, string> = {
   author: 'Author',
   reviewer: 'Reviewer',
   approver: 'Approver',
@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<ApiUser['role'], string> = {
 export function UserDetailModal({ user, onClose }: UserDetailModalProps) {
   const meta: [string, string][] = [
     ['Email', user.email],
-    ['Role', ROLE_LABELS[user.role]],
+    ['Role', user.role ? ROLE_LABELS[user.role] : 'Unassigned'],
     ['Department', departmentName(user.department)],
     ['Job Title', user.jobTitle || '—'],
     ['Status', user.status],
@@ -59,6 +59,26 @@ export function UserDetailModal({ user, onClose }: UserDetailModalProps) {
               </div>
             ))}
           </dl>
+
+          <div className="mb-4 border-t border-gray-100 pt-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">Authentication</p>
+            <div className="flex flex-wrap gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                  user.hasPassword ? 'border-brand-200 bg-brand-50 text-brand-800' : 'border-gray-200 bg-gray-50 text-gray-500'
+                }`}
+              >
+                <KeyRound className="h-3 w-3" /> Password {user.hasPassword ? 'Enabled' : 'Not Set'}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                  user.microsoftLinked ? 'border-brand-200 bg-brand-50 text-brand-800' : 'border-gray-200 bg-gray-50 text-gray-500'
+                }`}
+              >
+                <ShieldCheck className="h-3 w-3" /> Microsoft {user.microsoftLinked ? 'Connected' : 'Not Connected'}
+              </span>
+            </div>
+          </div>
 
           <div className="flex justify-end border-t border-gray-100 pt-4">
             <button

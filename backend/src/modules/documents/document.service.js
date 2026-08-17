@@ -1,7 +1,13 @@
-const { Document, DOCUMENT_TYPE_PREFIXES, POLICY_RESERVED_SEQUENCE } = require('./document.model');
+const {
+  Document,
+  DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
+  POLICY_RESERVED_SEQUENCE,
+} = require('./document.model');
 const { DocumentVersion } = require('./documentVersion.model');
+const { Counter } = require('./counter.model');
 const { Department } = require('../departments/department.model');
-const { NotFoundError, BadRequestError, ConflictError } = require('../../common/errors');
+const { NotFoundError, BadRequestError, ConflictError, ForbiddenError } = require('../../common/errors');
 const { uploadBufferToR2, resolveExtension } = require('../../middlewares/upload');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 const { notifyUser, notifyRole } = require('../notifications/notification.service');
@@ -28,40 +34,76 @@ async function nextDocIdByDepartment(departmentId) {
 }
 
 /**
- * Company numbering convention: `<SMS-XX>-<NNN>` per document type,
- * independent of department/year (e.g. "SMS-PR-015", "SMS-PO-0004").
- * Policy uses 4-digit numbers and reserves 0001–0003 for documents created
- * manually outside the app — automatic numbering starts at 0004. Every
- * other type uses 3-digit numbers starting at 001. The lookup is scoped to
- * docIds matching this exact type's prefix, so it's unaffected by (and
- * never collides with) any legacy department/year-formatted docIds already
- * in the database.
+ * Atomically allocates the next sequence number for `prefix` (e.g.
+ * "SMS-PO") via a dedicated Counter document — `$inc` on a single document
+ * is atomic in MongoDB, so this can't hand out the same number twice under
+ * concurrent document creation the way scanning for "highest existing + 1"
+ * could. `baseline` seeds the counter's starting point (only takes effect
+ * the very first time this prefix is ever used — `$setOnInsert` is a no-op
+ * on every call after that), so a fresh Policy counter starts handing out
+ * numbers at `baseline + 1` instead of `1`.
+ */
+async function nextSequence(prefix, baseline = 0) {
+  await Counter.updateOne({ _id: prefix }, { $setOnInsert: { seq: baseline } }, { upsert: true });
+  const counter = await Counter.findOneAndUpdate({ _id: prefix }, { $inc: { seq: 1 } }, { new: true });
+  return counter.seq;
+}
+
+/**
+ * Company numbering convention: `<SMS-XX><NNNNN>` per document type,
+ * independent of department/year (e.g. "SMS-PR00015", "SMS-PO00004") — no
+ * separator between the prefix and the 5-digit sequence. Policy reserves
+ * 00001–00003 for documents created manually outside the app — automatic
+ * numbering starts at 00004. Every other type starts at 00001. Read Site
+ * and Document Register documents of the same type share one sequence
+ * (a "Policy" is a "Policy" regardless of which destination registered it).
  */
 async function nextDocIdForType(type) {
   const prefix = DOCUMENT_TYPE_PREFIXES[type];
   if (!prefix) throw new BadRequestError(`No numbering convention configured for document type "${type}"`);
 
   const isPolicy = type === 'Policy';
-  const digits = isPolicy ? 4 : 3;
   const baseline = isPolicy ? POLICY_RESERVED_SEQUENCE : 0;
 
-  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
-  const latest = await Document.findOne({ docId: pattern }).sort({ docId: -1 });
-  let nextSeq = baseline + 1;
-  if (latest) {
-    const match = latest.docId.match(pattern);
-    const seq = match ? Number(match[1]) : NaN;
-    if (!Number.isNaN(seq) && seq >= nextSeq) nextSeq = seq + 1;
-  }
-  return `${prefix}-${String(nextSeq).padStart(digits, '0')}`;
+  const seq = await nextSequence(prefix, baseline);
+  return `${prefix}${String(seq).padStart(5, '0')}`;
 }
 
-/** Dispatches to the type-based scheme for Read Site documents, the department-based scheme for Drawing Register ones. */
-async function nextDocId({ destination, department, type }) {
-  if (destination === 'Read Site' && type) {
+/**
+ * Dispatches to the type-based scheme (Read Site and Document Register
+ * documents both have a `type`) or the department-based scheme (Drawing
+ * Register documents, which have no `type`).
+ */
+async function nextDocId({ department, type }) {
+  if (type) {
     return nextDocIdForType(type);
   }
   return nextDocIdByDepartment(department);
+}
+
+/**
+ * The Document Register's own reference convention: `STAC-QHSE-[TYPE]-[NNN]`
+ * (3-digit, dash-separated) — a completely separate Counter namespace from
+ * nextDocIdForType's SMS scheme above (different prefix strings, so no
+ * shared sequence, no Policy reservation). Only ever called for
+ * destination:'Document Register' documents; docId (SMS number) is still
+ * generated alongside it via the existing nextDocIdForType path.
+ */
+async function nextDocumentRegisterReference(type) {
+  const prefix = DOCUMENT_REGISTER_TYPE_PREFIXES[type];
+  if (!prefix) throw new BadRequestError(`No Document Register numbering convention configured for type "${type}"`);
+  const seq = await nextSequence(prefix, 0);
+  return `${prefix}${String(seq).padStart(3, '0')}`;
+}
+
+const DESTINATION_LABELS = {
+  'Read Site': 'the Read Site',
+  'Drawing Register': 'the Drawing Register',
+  'Document Register': 'the Document Register',
+};
+
+function destinationLabel(destination) {
+  return DESTINATION_LABELS[destination] || 'the Read Site';
 }
 
 function expectStatus(doc, expected) {
@@ -98,6 +140,7 @@ async function listDocuments({ department, type, status, search, skip = 0, limit
     filter.$or = [
       { title: new RegExp(search, 'i') },
       { docId: new RegExp(search, 'i') },
+      { documentRegisterReference: new RegExp(search, 'i') },
     ];
   }
 
@@ -125,6 +168,13 @@ async function getDocumentById(id) {
   return doc;
 }
 
+/**
+ * `docId`/`status`/`publishedAt`/`nextReviewDate`/`versionNumber`/`changeNote`
+ * are all optional and only ever passed by bulkImport.service.js — every
+ * other caller (the single-document "New Document" modal) omits them and
+ * gets today's exact behavior (auto-numbered, Draft, "1.0", "Initial
+ * upload") unchanged.
+ */
 async function createDocument({
   title,
   department,
@@ -136,18 +186,31 @@ async function createDocument({
   discipline,
   area,
   revision,
+  isoStandards,
+  isoClauses,
   authorId,
   file,
+  docId: explicitDocId,
+  documentRegisterReference: explicitDocumentRegisterReference,
+  status,
+  publishedAt,
+  nextReviewDate,
+  versionNumber,
+  changeNote,
 }) {
-  // Retries a couple of times on a docId collision (e.g. a concurrent create
-  // landing on the same next-sequence number) rather than failing the whole
-  // request outright.
+  const publishedFields =
+    status === 'Published'
+      ? { publishedAt: publishedAt || new Date(), nextReviewDate: nextReviewDate || new Date(Date.now() + ONE_YEAR_MS) }
+      : {};
+
   let doc;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const docId = await nextDocId({ destination, department, type });
+  if (explicitDocId) {
+    // A caller-supplied id (bulk import preserving a historical document
+    // number) — a collision here is a genuine conflict, not the benign
+    // auto-numbering race the retry loop below exists to absorb.
     try {
       doc = await Document.create({
-        docId,
+        docId: explicitDocId,
         title,
         department,
         type: type || null,
@@ -158,19 +221,61 @@ async function createDocument({
         discipline: discipline || null,
         area: area || '',
         revision: revision || '',
+        isoStandards: isoStandards || [],
+        isoClauses: isoClauses || '',
         author: authorId,
-        status: 'Draft',
+        status: status || 'Draft',
+        ...publishedFields,
       });
-      break;
     } catch (err) {
-      if (err.code === 11000 && attempt < 2) continue;
+      if (err.code === 11000) throw new ConflictError(`Document ID "${explicitDocId}" is already in use`);
       throw err;
+    }
+  } else {
+    // Retries a couple of times on a docId/documentRegisterReference
+    // collision (e.g. a concurrent create landing on the same next-sequence
+    // number) rather than failing the whole request outright. A
+    // caller-supplied documentRegisterReference (bulk import) is re-used
+    // as-is on every attempt — only docId re-generates — since bulk import
+    // already validated its uniqueness up front; only docId's own
+    // auto-numbering race is what this loop is really absorbing in that case.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const generatedDocId = await nextDocId({ destination, department, type });
+      const documentRegisterReference =
+        destination === 'Document Register'
+          ? explicitDocumentRegisterReference || (await nextDocumentRegisterReference(type))
+          : undefined;
+      try {
+        doc = await Document.create({
+          docId: generatedDocId,
+          documentRegisterReference,
+          title,
+          department,
+          type: type || null,
+          description: description || '',
+          location: location || 'Onshore',
+          destination,
+          drawingNumber: drawingNumber || '',
+          discipline: discipline || null,
+          area: area || '',
+          revision: revision || '',
+          isoStandards: isoStandards || [],
+          isoClauses: isoClauses || '',
+          author: authorId,
+          status: status || 'Draft',
+          ...publishedFields,
+        });
+        break;
+      } catch (err) {
+        if (err.code === 11000 && attempt < 2) continue;
+        throw err;
+      }
     }
   }
 
   if (file) {
     try {
-      await addVersion(doc._id, { file, changeNote: 'Initial upload', uploadedBy: authorId });
+      await addVersion(doc._id, { file, changeNote: changeNote || 'Initial upload', uploadedBy: authorId, versionNumber });
     } catch (err) {
       // The upload failed (e.g. R2 unreachable/misconfigured) — don't
       // leave an empty, file-less draft behind. Roll back the document so
@@ -183,14 +288,20 @@ async function createDocument({
   return getDocumentById(doc._id);
 }
 
-async function addVersion(id, { file, changeNote, uploadedBy }) {
+async function addVersion(id, { file, changeNote, uploadedBy, versionNumber: versionNumberOverride }) {
   const doc = await Document.findById(id).populate('department', 'code');
   if (!doc) throw new NotFoundError('Document not found');
 
   const versionCount = await DocumentVersion.countDocuments({ document: doc._id });
-  const versionNumber = `${versionCount + 1}.0`;
+  // Override lets bulk import carry over a historical document's real
+  // version label (e.g. "3.2") instead of always starting at "1.0".
+  const versionNumber = versionNumberOverride || `${versionCount + 1}.0`;
   const format = resolveExtension(file);
-  const key = `documents/${doc.department.code.toLowerCase()}/${doc.docId}-v${versionNumber}.${format}`;
+  // Document Register documents can have no department (organized by Type
+  // instead) — fall back to a fixed folder segment rather than crashing on
+  // `doc.department.code` when the ref is null.
+  const departmentSegment = doc.department?.code ? doc.department.code.toLowerCase() : 'qhse';
+  const key = `documents/${departmentSegment}/${doc.docId}-v${versionNumber}.${format}`;
 
   await uploadBufferToR2(file.buffer, { key, contentType: file.mimetype });
 
@@ -241,7 +352,19 @@ async function updateDocument(id, userId, userRole, updates) {
   if (doc.author.toString() !== userId && userRole !== 'controller') {
     throw new BadRequestError('Only the author or a Document Controller can edit this document');
   }
-  expectStatus(doc, 'Draft');
+  if (doc.destination === 'Document Register' && userRole !== 'controller') {
+    throw new ForbiddenError('Only a Document Controller can edit Document Register documents.');
+  }
+
+  // Document Register documents are Published the moment they're created —
+  // they never have a Draft phase, so editing one is only ever "editing the
+  // active document" rather than "editing before it goes live". Every other
+  // destination keeps the original Draft-only rule (edits after submission
+  // go through the review workflow instead).
+  const isActiveDocRegister = doc.destination === 'Document Register' && doc.status === 'Published';
+  if (!isActiveDocRegister) {
+    expectStatus(doc, 'Draft');
+  }
 
   if (updates.department) {
     const department = await Department.findById(updates.department);
@@ -479,15 +602,15 @@ async function publish(id, userId) {
   doc.nextReviewDate = new Date(Date.now() + ONE_YEAR_MS);
   await doc.save();
   await recordAudit({ user: userId, action: 'publish', targetType: 'document', targetId: doc._id });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyUser(doc.author, {
     type: 'document_published',
-    message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) has been published and is now live on ${label}.`,
     relatedDocument: doc._id,
   });
   await notifyRole('controller', {
     type: 'document_published',
-    message: `"${doc.title}" (${doc.docId}) has been published to ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) has been published to ${label}.`,
     relatedDocument: doc._id,
     excludeUserId: userId,
   });
@@ -526,10 +649,10 @@ async function archive(id, userId, reason) {
   doc.archiveReason = reason || '';
   await doc.save();
   await recordAudit({ user: userId, action: 'archive', targetType: 'document', targetId: doc._id });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyParticipants(doc, userId, {
     type: 'document_archived',
-    message: `"${doc.title}" (${doc.docId}) was archived and is no longer visible on ${destinationLabel}.`,
+    message: `"${doc.title}" (${doc.docId}) was archived and is no longer visible on ${label}.`,
   });
   return getDocumentById(doc._id);
 }
@@ -545,10 +668,10 @@ async function restore(id, userId) {
   doc.archiveReason = '';
   await doc.save();
   await recordAudit({ user: userId, action: 'edit', targetType: 'document', targetId: doc._id, metadata: { restored: true } });
-  const destinationLabel = doc.destination === 'Drawing Register' ? 'the Drawing Register' : 'the Read Site';
+  const label = destinationLabel(doc.destination);
   await notifyParticipants(doc, userId, {
     type: 'document_restored',
-    message: `"${doc.title}" (${doc.docId}) was restored and is visible on ${destinationLabel} again.`,
+    message: `"${doc.title}" (${doc.docId}) was restored and is visible on ${label} again.`,
   });
   return getDocumentById(doc._id);
 }
@@ -581,6 +704,7 @@ module.exports = {
   listDocuments,
   getDocumentById,
   createDocument,
+  nextDocumentRegisterReference,
   updateDocument,
   addVersion,
   getVersions,

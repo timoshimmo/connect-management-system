@@ -74,8 +74,18 @@ function issueTokens(user) {
 }
 
 async function login({ email, password }) {
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: email.toLowerCase() }).populate('department', 'name code');
   if (!user) throw new UnauthorizedError('Invalid email or password');
+
+  // An SSO-only account (Microsoft, no password ever set) has no hash to
+  // compare against — bcrypt.compare() would throw on a null hash, and
+  // "Invalid email or password" would be misleading (the email is right,
+  // there's just no password method to check it against yet).
+  if (!user.passwordHash) {
+    throw new UnauthorizedError(
+      'This account signs in with Microsoft. Use "Sign in with Microsoft", or set a password from your account profile first.'
+    );
+  }
 
   const valid = await comparePassword(password, user.passwordHash);
   if (!valid) throw new UnauthorizedError('Invalid email or password');
@@ -112,7 +122,7 @@ async function refresh(refreshTokenValue) {
     throw new UnauthorizedError('Refresh token is no longer valid');
   }
 
-  const user = await User.findById(decoded.sub);
+  const user = await User.findById(decoded.sub).populate('department', 'name code');
   if (!user) throw new UnauthorizedError('User no longer exists');
 
   // Rotate: revoke the old token and issue a new pair.
@@ -183,4 +193,16 @@ async function resetPassword(token, newPassword) {
   return { message: 'Password has been reset.' };
 }
 
-module.exports = { login, refresh, logout, forgotPassword, resetPassword, inviteUser };
+module.exports = {
+  login,
+  refresh,
+  logout,
+  forgotPassword,
+  resetPassword,
+  inviteUser,
+  // Exported for reuse by microsoft.service.js — SSO login issues the exact
+  // same token pair/RefreshToken record as password login, and hashes its
+  // own short-lived OAuth state the same way.
+  hashToken,
+  issueTokens,
+};

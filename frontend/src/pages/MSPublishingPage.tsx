@@ -27,6 +27,13 @@ import { isDocumentOverdue, isPublishedThisMonth } from '@/features/documents/ut
 import { UserManagementPanel } from '@/features/users';
 import { DepartmentManagementPanel } from '@/features/departments/DepartmentManagementPanel';
 import { DisciplineManagementPanel } from '@/features/disciplines/DisciplineManagementPanel';
+import { BulkUploadPanel } from '@/features/bulk-upload';
+import {
+  CreateDocumentRegisterDocumentPanel,
+  ManageDocumentRegisterPanel,
+  EditDocumentRegisterModal,
+  DocumentRegisterBulkUploadPanel,
+} from '@/features/document-register';
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
 import { ROLES, ViewKey, CountKey } from '@/data/roles';
@@ -116,6 +123,7 @@ function MSPublishingContent() {
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<ApiDocument | null>(null);
   const [editDoc, setEditDoc] = useState<ApiDocument | null>(null);
+  const [editRegisterDoc, setEditRegisterDoc] = useState<ApiDocument | null>(null);
   const [archiveDoc, setArchiveDoc] = useState<ApiDocument | null>(null);
   const [restoreDoc, setRestoreDoc] = useState<ApiDocument | null>(null);
   const [reassignDoc, setReassignDoc] = useState<ApiDocument | null>(null);
@@ -220,7 +228,29 @@ function MSPublishingContent() {
     ];
   }, [user?.role, counts, myDocuments, allDocuments]);
 
-  if (!user || !user.role) return null;
+  if (!user) return null;
+
+  if (!user.role) {
+    // First-time Microsoft SSO signup (or a manually-created placeholder
+    // account) with no role assigned yet — see auth/microsoft.service.js.
+    // No sidebar/workflow view makes sense until a Controller assigns one.
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-lg font-bold text-gray-900">Awaiting Role Assignment</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Your account has been created, but a Document Controller hasn't assigned you a role or department yet.
+          You'll be able to access STACconnect as soon as that's done.
+        </p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-6 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
+  }
   const role = ROLES[user.role];
 
   function openNewDoc() {
@@ -668,6 +698,31 @@ function MSPublishingContent() {
         <DisciplineManagementPanel />
       </RoleGuard>
     );
+  } else if (view === 'bulkUpload') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <BulkUploadPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'documentRegisterCreate') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <CreateDocumentRegisterDocumentPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'documentRegisterBulkUpload') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <DocumentRegisterBulkUploadPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'documentRegisterManage') {
+    const registerDocs = allDocuments.filter((d) => d.destination === 'Document Register' && d.status === 'Published');
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <ManageDocumentRegisterPanel documents={registerDocs} onEdit={setEditRegisterDoc} onArchive={setArchiveDoc} />
+      </RoleGuard>
+    );
   } else if (view === 'dept' && activeFilter) {
     const deptDocs = allDocuments.filter((d) => refName(d.department) === activeFilter);
     const due = deptDocs.filter(isDocumentOverdue);
@@ -869,6 +924,19 @@ function MSPublishingContent() {
             updateDocument.mutate(
               { id: editDoc._id, ...payload },
               { onSuccess: () => setEditDoc(null) }
+            )
+          }
+          isSubmitting={updateDocument.isPending}
+        />
+      )}
+      {editRegisterDoc && (
+        <EditDocumentRegisterModal
+          doc={editRegisterDoc}
+          onClose={() => setEditRegisterDoc(null)}
+          onSave={(payload) =>
+            updateDocument.mutate(
+              { id: editRegisterDoc._id, ...payload },
+              { onSuccess: () => setEditRegisterDoc(null) }
             )
           }
           isSubmitting={updateDocument.isPending}

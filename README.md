@@ -1,5 +1,8 @@
 # STACconnect Management System
 
+<!-- Includes the Document Register module: dedicated bulk-upload template, Reference No.
+     numbering (STAC-QHSE-[TYPE]-NNN), and full document lifecycle management. -->
+
 A full-stack document management system: a role-based publishing workflow (MS Publishing), a
 public read-only document library (Read Site), and a separately-authenticated storefront for
 engineering/drawing documents (Drawing Register).

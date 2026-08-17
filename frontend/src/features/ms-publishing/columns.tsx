@@ -23,6 +23,26 @@ export const titleColumn: DocumentColumn = {
   ),
 };
 
+const DESTINATION_BADGE_CLASSES: Record<string, string> = {
+  'Read Site': 'bg-brand-50 text-brand-700',
+  'Drawing Register': 'bg-amber-50 text-amber-700',
+  'Document Register': 'bg-emerald-50 text-emerald-700',
+};
+
+export const destinationColumn: DocumentColumn = {
+  key: 'destination',
+  header: 'Destination',
+  render: (doc) => (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        DESTINATION_BADGE_CLASSES[doc.destination] ?? 'bg-gray-100 text-gray-600'
+      }`}
+    >
+      {doc.destination}
+    </span>
+  ),
+};
+
 export const departmentColumn: DocumentColumn = {
   key: 'department',
   header: 'Department',

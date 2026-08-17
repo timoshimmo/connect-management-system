@@ -1,10 +1,16 @@
 const { z } = require('zod');
-const { DOCUMENT_TYPES, DOCUMENT_LOCATIONS, DOCUMENT_STATUSES, DOCUMENT_DESTINATIONS } = require('./document.model');
+const {
+  DOCUMENT_TYPES,
+  DOCUMENT_LOCATIONS,
+  DOCUMENT_STATUSES,
+  DOCUMENT_DESTINATIONS,
+  ISO_STANDARDS,
+} = require('./document.model');
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 
 /**
- * Fields shared by both destinations, plus every destination-specific field
+ * Fields shared across destinations, plus every destination-specific field
  * as optional at the schema level — requiredness is destination-conditional,
  * enforced below via superRefine rather than the schema shape itself (see
  * requirement 6: "Validation should also change dynamically depending on
@@ -16,17 +22,26 @@ const documentFieldsSchema = {
   destination: z.enum(DOCUMENT_DESTINATIONS),
   description: z.string().optional(),
   location: z.enum(DOCUMENT_LOCATIONS).optional(),
-  // Read Site
+  // Read Site / Document Register
   type: z.enum(DOCUMENT_TYPES).optional(),
   // Drawing Register
   drawingNumber: z.string().optional(),
   discipline: objectId.optional(),
   area: z.string().optional(),
   revision: z.string().optional(),
+  // Document Register — optional even there ("where applicable"). multer only
+  // arrays a repeated multipart field when it appears 2+ times, so selecting
+  // exactly one ISO standard checkbox arrives as a bare string, not a
+  // 1-element array — normalize before validating against the enum.
+  isoStandards: z
+    .union([z.array(z.enum(ISO_STANDARDS)), z.enum(ISO_STANDARDS)])
+    .transform((v) => (Array.isArray(v) ? v : [v]))
+    .optional(),
+  isoClauses: z.string().optional(),
 };
 
 function requireDestinationFields(data, ctx) {
-  if (data.destination === 'Read Site') {
+  if (data.destination === 'Read Site' || data.destination === 'Document Register') {
     if (!data.type) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['type'], message: 'Document type is required.' });
     }
@@ -43,7 +58,27 @@ function requireDestinationFields(data, ctx) {
   }
 }
 
-const createDocumentSchema = z.object(documentFieldsSchema).superRefine(requireDestinationFields);
+const createDocumentSchema = z
+  .object({
+    ...documentFieldsSchema,
+    // Create-only, and deliberately restricted to just 'Published' (not the
+    // full DOCUMENT_STATUSES enum) — this is exclusively how Document
+    // Register documents skip the review workflow (spec: Controller
+    // registers an already-controlled document). Every other status
+    // transition goes through its own dedicated endpoint (/submit,
+    // /publish, /archive, ...), never a raw status field on create/update.
+    status: z.enum(['Published']).optional(),
+  })
+  .superRefine((data, ctx) => {
+    requireDestinationFields(data, ctx);
+    if (data.status === 'Published' && data.destination !== 'Document Register') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'Only Document Register documents can be created as already Published.',
+      });
+    }
+  });
 
 // Same destination-conditional rule as create, but every field is optional
 // since this is a partial update — the requiredness check only runs when

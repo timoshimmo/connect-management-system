@@ -45,9 +45,9 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const me = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user.id).populate('department', 'name code');
   if (!user) throw new NotFoundError('User not found');
   res.json({ user: user.toPublicJSON() });
 });
 
-module.exports = { login, refresh, logout, forgotPassword, resetPassword, me };
+module.exports = { login, refresh, logout, forgotPassword, resetPassword, me, setRefreshCookie };
