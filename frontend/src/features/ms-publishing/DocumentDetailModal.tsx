@@ -25,7 +25,7 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
   const isDocumentRegister = doc.destination === 'Document Register';
 
   const meta: [string, string][] = [
-    ['Doc ID', doc.docId],
+    isDocumentRegister ? ['Reference', doc.documentRegisterReference ?? '—'] : ['Doc ID', doc.docId],
     ['Department', refName(doc.department)],
     ...(isDrawingRegister
       ? ([

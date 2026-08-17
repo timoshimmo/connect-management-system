@@ -10,3 +10,9 @@ export { DocumentDetailsModal } from './DocumentDetailsModal';
 export { CreateDocumentRegisterDocumentPanel } from './CreateDocumentRegisterDocumentPanel';
 export { EditDocumentRegisterModal } from './EditDocumentRegisterModal';
 export { ManageDocumentRegisterPanel } from './ManageDocumentRegisterPanel';
+export {
+  useDownloadDocumentRegisterTemplate,
+  useParseDocumentRegisterBulkImportMutation,
+  useCommitDocumentRegisterBulkImportMutation,
+} from './bulkImportHooks';
+export { DocumentRegisterBulkUploadPanel } from './DocumentRegisterBulkUploadPanel';

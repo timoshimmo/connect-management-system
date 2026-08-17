@@ -32,6 +32,7 @@ import {
   CreateDocumentRegisterDocumentPanel,
   ManageDocumentRegisterPanel,
   EditDocumentRegisterModal,
+  DocumentRegisterBulkUploadPanel,
 } from '@/features/document-register';
 import { refId, refName } from '@/lib/apiTypes';
 import type { ApiDocument } from '@/lib/apiTypes';
@@ -707,6 +708,12 @@ function MSPublishingContent() {
     content = (
       <RoleGuard allow={['controller']} role={user.role}>
         <CreateDocumentRegisterDocumentPanel />
+      </RoleGuard>
+    );
+  } else if (view === 'documentRegisterBulkUpload') {
+    content = (
+      <RoleGuard allow={['controller']} role={user.role}>
+        <DocumentRegisterBulkUploadPanel />
       </RoleGuard>
     );
   } else if (view === 'documentRegisterManage') {

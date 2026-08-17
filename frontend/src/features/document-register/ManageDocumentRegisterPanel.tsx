@@ -22,9 +22,9 @@ const inputClasses =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/30';
 
 const referenceColumn: DocumentColumn = {
-  key: 'docId',
+  key: 'documentRegisterReference',
   header: 'Reference',
-  render: (doc) => <span className="text-sm font-semibold text-gray-900">{doc.docId}</span>,
+  render: (doc) => <span className="text-sm font-semibold text-gray-900">{doc.documentRegisterReference}</span>,
 };
 
 const registerTitleColumn: DocumentColumn = {
@@ -82,7 +82,12 @@ export function ManageDocumentRegisterPanel({ documents, onEdit, onArchive }: Ma
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return documents.filter((doc) => {
-      if (term && !doc.title.toLowerCase().includes(term) && !doc.docId.toLowerCase().includes(term)) return false;
+      if (
+        term &&
+        !doc.title.toLowerCase().includes(term) &&
+        !doc.documentRegisterReference?.toLowerCase().includes(term)
+      )
+        return false;
       if (type && doc.type !== type) return false;
       if (isoStandard && !doc.isoStandards.includes(isoStandard)) return false;
       return true;

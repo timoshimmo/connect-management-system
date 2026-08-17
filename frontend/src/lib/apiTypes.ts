@@ -110,8 +110,11 @@ export type ApiIsoStandard = 'ISO 9001 (Quality)' | 'ISO 14001 (Environment)' | 
 export interface ApiDocument {
   _id: string;
   docId: string;
+  /** Document Register's own displayed reference (STAC-QHSE-[TYPE]-[NNN]) — present only on Document Register documents. Never `docId` (the SMS number) — see document.model.js. */
+  documentRegisterReference?: string;
   title: string;
-  department: ApiDepartmentRef | string;
+  /** Absent (null) only for Document Register documents — that destination is organized by Type, not Department. */
+  department: ApiDepartmentRef | string | null;
   /** Only required for Read Site documents — Drawing Register documents don't set this. */
   type: ApiDocumentType | null;
   status: ApiDocumentStatus;
@@ -185,6 +188,38 @@ export interface ApiBulkImportCommitResult {
   skipped: number;
   results: ApiBulkImportResultRow[];
 }
+
+/**
+ * Row shape shared by /documents/document-register-bulk-import/parse and
+ * /commit — see backend/src/modules/documents/documentRegisterBulkImport.service.js.
+ * Deliberately no `destination`/`department`/`authorName` fields: this
+ * dedicated template is Document Register-only (organized by Type, not
+ * Department) and always registers under the importing Controller.
+ */
+export interface ApiDocumentRegisterBulkImportRowData {
+  referenceNo: string;
+  title: string;
+  revision: string;
+  issueDate: string;
+  category: ApiDocumentType | '';
+  isoClauses: string;
+  fileName: string;
+}
+
+export interface ApiDocumentRegisterBulkImportRow {
+  rowNumber: number;
+  data: ApiDocumentRegisterBulkImportRowData;
+  status: 'valid' | 'invalid';
+  errors: string[];
+}
+
+export interface ApiDocumentRegisterBulkImportParseResult {
+  rows: ApiDocumentRegisterBulkImportRow[];
+  summary: { total: number; valid: number; invalid: number };
+}
+
+/** Same shape as ApiBulkImportCommitResult so the existing ImportSummary component can be reused as-is. */
+export type ApiDocumentRegisterBulkImportCommitResult = ApiBulkImportCommitResult;
 
 /** GET /document-register/types — live counts for the Document Type filter sidebar. */
 export interface ApiDocumentRegisterTypeCount {

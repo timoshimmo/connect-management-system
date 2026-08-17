@@ -90,7 +90,10 @@ export function useCreateDocumentMutation() {
     onSuccess: (doc) => {
       invalidate();
       if (doc.status === 'Published') {
-        showSuccess('Document registered', `"${doc.title}" was published to the Document Register (${doc.docId}).`);
+        showSuccess(
+          'Document registered',
+          `"${doc.title}" was published to the Document Register (${doc.documentRegisterReference}).`
+        );
       } else {
         showSuccess('Document created', `"${doc.title}" was saved as a draft (${doc.docId}).`);
       }

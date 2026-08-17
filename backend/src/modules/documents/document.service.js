@@ -1,4 +1,9 @@
-const { Document, DOCUMENT_TYPE_PREFIXES, POLICY_RESERVED_SEQUENCE } = require('./document.model');
+const {
+  Document,
+  DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
+  POLICY_RESERVED_SEQUENCE,
+} = require('./document.model');
 const { DocumentVersion } = require('./documentVersion.model');
 const { Counter } = require('./counter.model');
 const { Department } = require('../departments/department.model');
@@ -76,6 +81,21 @@ async function nextDocId({ department, type }) {
   return nextDocIdByDepartment(department);
 }
 
+/**
+ * The Document Register's own reference convention: `STAC-QHSE-[TYPE]-[NNN]`
+ * (3-digit, dash-separated) — a completely separate Counter namespace from
+ * nextDocIdForType's SMS scheme above (different prefix strings, so no
+ * shared sequence, no Policy reservation). Only ever called for
+ * destination:'Document Register' documents; docId (SMS number) is still
+ * generated alongside it via the existing nextDocIdForType path.
+ */
+async function nextDocumentRegisterReference(type) {
+  const prefix = DOCUMENT_REGISTER_TYPE_PREFIXES[type];
+  if (!prefix) throw new BadRequestError(`No Document Register numbering convention configured for type "${type}"`);
+  const seq = await nextSequence(prefix, 0);
+  return `${prefix}${String(seq).padStart(3, '0')}`;
+}
+
 const DESTINATION_LABELS = {
   'Read Site': 'the Read Site',
   'Drawing Register': 'the Drawing Register',
@@ -120,6 +140,7 @@ async function listDocuments({ department, type, status, search, skip = 0, limit
     filter.$or = [
       { title: new RegExp(search, 'i') },
       { docId: new RegExp(search, 'i') },
+      { documentRegisterReference: new RegExp(search, 'i') },
     ];
   }
 
@@ -170,6 +191,7 @@ async function createDocument({
   authorId,
   file,
   docId: explicitDocId,
+  documentRegisterReference: explicitDocumentRegisterReference,
   status,
   publishedAt,
   nextReviewDate,
@@ -210,14 +232,23 @@ async function createDocument({
       throw err;
     }
   } else {
-    // Retries a couple of times on a docId collision (e.g. a concurrent
-    // create landing on the same next-sequence number) rather than failing
-    // the whole request outright.
+    // Retries a couple of times on a docId/documentRegisterReference
+    // collision (e.g. a concurrent create landing on the same next-sequence
+    // number) rather than failing the whole request outright. A
+    // caller-supplied documentRegisterReference (bulk import) is re-used
+    // as-is on every attempt — only docId re-generates — since bulk import
+    // already validated its uniqueness up front; only docId's own
+    // auto-numbering race is what this loop is really absorbing in that case.
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const generatedDocId = await nextDocId({ destination, department, type });
+      const documentRegisterReference =
+        destination === 'Document Register'
+          ? explicitDocumentRegisterReference || (await nextDocumentRegisterReference(type))
+          : undefined;
       try {
         doc = await Document.create({
           docId: generatedDocId,
+          documentRegisterReference,
           title,
           department,
           type: type || null,
@@ -266,7 +297,11 @@ async function addVersion(id, { file, changeNote, uploadedBy, versionNumber: ver
   // version label (e.g. "3.2") instead of always starting at "1.0".
   const versionNumber = versionNumberOverride || `${versionCount + 1}.0`;
   const format = resolveExtension(file);
-  const key = `documents/${doc.department.code.toLowerCase()}/${doc.docId}-v${versionNumber}.${format}`;
+  // Document Register documents can have no department (organized by Type
+  // instead) — fall back to a fixed folder segment rather than crashing on
+  // `doc.department.code` when the ref is null.
+  const departmentSegment = doc.department?.code ? doc.department.code.toLowerCase() : 'qhse';
+  const key = `documents/${departmentSegment}/${doc.docId}-v${versionNumber}.${format}`;
 
   await uploadBufferToR2(file.buffer, { key, contentType: file.mimetype });
 
@@ -669,6 +704,7 @@ module.exports = {
   listDocuments,
   getDocumentById,
   createDocument,
+  nextDocumentRegisterReference,
   updateDocument,
   addVersion,
   getVersions,

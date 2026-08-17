@@ -6,7 +6,12 @@ const { hashPassword } = require('../utils/password');
 const { User } = require('../modules/users/user.model');
 const { Department } = require('../modules/departments/department.model');
 const { Discipline } = require('../modules/disciplines/discipline.model');
-const { Document, DOCUMENT_TYPE_PREFIXES, POLICY_RESERVED_SEQUENCE } = require('../modules/documents/document.model');
+const {
+  Document,
+  DOCUMENT_TYPE_PREFIXES,
+  DOCUMENT_REGISTER_TYPE_PREFIXES,
+  POLICY_RESERVED_SEQUENCE,
+} = require('../modules/documents/document.model');
 const { Counter } = require('../modules/documents/counter.model');
 const { RefreshToken } = require('../modules/auth/refreshToken.model');
 const { AuditLog } = require('../modules/auditLogs/auditLog.model');
@@ -141,6 +146,17 @@ function nextDocId(d, departmentCode) {
   return `${prefix}${String(typeSequence[prefix]).padStart(5, '0')}`;
 }
 
+// Mirrors document.service.js's nextDocumentRegisterReference — a
+// completely separate counter family (STAC-QHSE-[TYPE]-[NNN]) from the SMS
+// docId scheme above, so the 5 seeded Document Register sample documents
+// come out fully populated without needing the backfill script.
+const registerRefSequence = {};
+function nextDocumentRegisterReference(d) {
+  const prefix = DOCUMENT_REGISTER_TYPE_PREFIXES[d.type];
+  registerRefSequence[prefix] = (registerRefSequence[prefix] ?? 0) + 1;
+  return `${prefix}${String(registerRefSequence[prefix]).padStart(3, '0')}`;
+}
+
 async function seed() {
   await mongoose.connect(env.mongodbUri);
   console.log('Connected to', env.mongodbUri);
@@ -186,6 +202,7 @@ async function seed() {
   for (const d of DOCUMENTS) {
     await Document.create({
       docId: nextDocId(d, departmentCodeByName.get(d.department)),
+      documentRegisterReference: d.destination === 'Document Register' ? nextDocumentRegisterReference(d) : undefined,
       title: d.title,
       department: departmentByName.get(d.department),
       type: d.type,
@@ -222,6 +239,12 @@ async function seed() {
     Object.entries(typeSequence)
       .filter(([prefix]) => typePrefixes.has(prefix))
       .map(([prefix, seq]) => Counter.updateOne({ _id: prefix }, { $set: { seq } }, { upsert: true }))
+  );
+  // Same catch-up for the separate STAC-QHSE-* counter family.
+  await Promise.all(
+    Object.entries(registerRefSequence).map(([prefix, seq]) =>
+      Counter.updateOne({ _id: prefix }, { $set: { seq } }, { upsert: true })
+    )
   );
 
   console.log('Seeding Drawing Register users (all share the password "%s")...', DEMO_PASSWORD);

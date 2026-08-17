@@ -44,7 +44,7 @@ export default function DocumentRegisterCard({ searchQuery = '' }: DocumentRegis
             <FolderIcon className="h-3.5 w-3.5" aria-hidden="true" />
             Controlled Documents
           </div>
-          <h3 className="mt-2 text-lg font-bold text-gray-900">Document Register</h3>
+          <h3 className="mt-2 text-lg font-bold text-gray-900">QHSE Management System — Document Register</h3>
           <p className="mt-2 text-sm text-gray-500">
             Browse the controlled Management System documents, revisions, references and issue
             information.
@@ -72,7 +72,7 @@ export default function DocumentRegisterCard({ searchQuery = '' }: DocumentRegis
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-3 py-2 font-semibold uppercase tracking-wide text-gray-400">Doc ID</th>
+                <th className="px-3 py-2 font-semibold uppercase tracking-wide text-gray-400">Reference</th>
                 <th className="px-3 py-2 font-semibold uppercase tracking-wide text-gray-400">Title</th>
                 <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-gray-400">
                   Rev
@@ -94,7 +94,7 @@ export default function DocumentRegisterCard({ searchQuery = '' }: DocumentRegis
                     }
                   }}
                 >
-                  <td className="px-3 py-2 font-medium text-emerald-800">{doc.docId}</td>
+                  <td className="px-3 py-2 font-medium text-emerald-800">{doc.documentRegisterReference}</td>
                   <td className="max-w-[180px] truncate px-3 py-2 text-gray-700">{doc.title}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right text-gray-500">
                     Rev {doc.revision || '0'}

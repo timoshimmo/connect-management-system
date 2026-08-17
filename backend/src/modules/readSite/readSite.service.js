@@ -25,7 +25,11 @@ async function listPublishedDocuments({
   if (type) filter.type = type;
   if (isoStandard) filter.isoStandards = isoStandard;
   if (search) {
-    filter.$or = [{ title: new RegExp(search, 'i') }, { docId: new RegExp(search, 'i') }];
+    filter.$or = [
+      { title: new RegExp(search, 'i') },
+      { docId: new RegExp(search, 'i') },
+      { documentRegisterReference: new RegExp(search, 'i') },
+    ];
   }
 
   const [items, total] = await Promise.all([

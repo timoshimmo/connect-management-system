@@ -81,7 +81,7 @@ export function EditDocumentRegisterModal({ doc, onClose, onSave, isSubmitting }
         <div className="flex items-start justify-between rounded-t-xl bg-emerald-950 px-5 py-4">
           <div>
             <h3 className="text-sm font-bold text-white">Edit Document Register Document</h3>
-            <p className="mt-0.5 text-xs text-emerald-100">Reference: {doc.docId}</p>
+            <p className="mt-0.5 text-xs text-emerald-100">Reference: {doc.documentRegisterReference}</p>
           </div>
           <button
             type="button"
