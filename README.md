@@ -84,7 +84,7 @@ docx-preview (in-app document preview).
 cd backend
 npm install
 cp .env.example .env   # then fill in MONGODB_URI, JWT secrets, and R2 credentials
-npm run seed            # seeds demo departments, disciplines, users, and documents
+npm run seed           # seeds demo departments, disciplines, users, and documents
 npm run dev
 ```
 
