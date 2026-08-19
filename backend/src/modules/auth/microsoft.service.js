@@ -128,8 +128,12 @@ async function handleCallback({ query, cookieValue }) {
   const client = await getClient();
   let tokenSet;
   try {
-    const params = client.callbackParams({ query, method: 'GET' });
-    tokenSet = await client.callback(env.microsoft.redirectUri, params, {
+    // client.callback() already normalizes a plain params object internally
+    // (via its own pickCb()) — no need for callbackParams(), which requires
+    // a real http.IncomingMessage-like object (.url + .method) and throws a
+    // TypeError on a plain { query, method } shape. req.query is already
+    // the right shape on its own.
+    tokenSet = await client.callback(env.microsoft.redirectUri, query, {
       state: stored.state,
       nonce: stored.nonce,
       code_verifier: stored.codeVerifier,
