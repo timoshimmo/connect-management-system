@@ -24,7 +24,11 @@ async function listDepartments({ search, status, skip = 0, limit = 20 } = {}) {
       { $group: { _id: '$department', count: { $sum: 1 } } },
     ]),
   ]);
-  const countByDept = new Map(counts.map((c) => [c._id.toString(), c.count]));
+  // Document Register documents can have no department (organized by Type
+  // instead — see document.model.js), so this aggregate's `_id` is `null`
+  // for any published Document Register doc — skip that bucket, it has no
+  // department to attribute a count to.
+  const countByDept = new Map(counts.filter((c) => c._id).map((c) => [c._id.toString(), c.count]));
 
   const items = departments.map((d) => ({
     id: d._id.toString(),

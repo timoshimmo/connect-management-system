@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const { MAX_ROWS } = require('./documentRegisterBulkImport.service');
+const { fileRefSchema } = require('./document.validation');
 
 /**
  * Structural guard only — confirms the `rows` field the client sends to
@@ -29,4 +30,7 @@ const documentRegisterBulkImportCommitRowsSchema = z
   .min(1, 'At least one row is required.')
   .max(MAX_ROWS, `A single import is limited to ${MAX_ROWS} rows.`);
 
-module.exports = { documentRegisterBulkImportCommitRowsSchema };
+/** Files already uploaded to R2 via /documents/upload-urls — never raw bytes, see commitImport's fileByName matching. */
+const documentRegisterBulkImportFileRefsSchema = z.array(fileRefSchema).max(MAX_ROWS);
+
+module.exports = { documentRegisterBulkImportCommitRowsSchema, documentRegisterBulkImportFileRefsSchema };

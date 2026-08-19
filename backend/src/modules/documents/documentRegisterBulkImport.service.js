@@ -315,12 +315,12 @@ async function validateRows(rawRows) {
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-async function commitImport({ rows, files, actorId }) {
+async function commitImport({ rows, fileRefs, actorId }) {
   const revalidated = await validateRows(rows.map((r) => ({ rowNumber: r.rowNumber, data: r.data })));
 
   const fileByName = new Map();
-  for (const f of files || []) {
-    const key = fileNameKey(f.originalname);
+  for (const f of fileRefs || []) {
+    const key = fileNameKey(f.originalFilename);
     fileByName.set(key, fileByName.has(key) ? 'AMBIGUOUS' : f);
   }
 
@@ -336,13 +336,13 @@ async function commitImport({ rows, files, actorId }) {
       continue;
     }
 
-    const file = fileByName.get(fileNameKey(row.data.fileName));
-    if (!file) {
+    const fileRef = fileByName.get(fileNameKey(row.data.fileName));
+    if (!fileRef) {
       results.push({ row: row.rowNumber, status: 'failed', error: `No uploaded file named "${row.data.fileName}" was found.` });
       failed += 1;
       continue;
     }
-    if (file === 'AMBIGUOUS') {
+    if (fileRef === 'AMBIGUOUS') {
       results.push({ row: row.rowNumber, status: 'failed', error: `Multiple uploaded files are named "${row.data.fileName}".` });
       failed += 1;
       continue;
@@ -359,7 +359,7 @@ async function commitImport({ rows, files, actorId }) {
         isoClauses: row.data.isoClauses,
         isoStandards: [],
         authorId: actorId,
-        file,
+        fileRef,
         status: 'Published',
         publishedAt: issueDate,
         nextReviewDate: new Date(issueDate.getTime() + ONE_YEAR_MS),

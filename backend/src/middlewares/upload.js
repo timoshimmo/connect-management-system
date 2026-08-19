@@ -1,5 +1,7 @@
 const multer = require('multer');
-const { PutObjectCommand } = require('@aws-sdk/client-s3');
+const { randomUUID } = require('crypto');
+const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');
 const env = require('../config/env');
 const { BadRequestError } = require('../common/errors');
@@ -57,4 +59,65 @@ async function uploadBufferToR2(buffer, { key, contentType }) {
   return { key };
 }
 
-module.exports = { upload, uploadBufferToR2, resolveExtension, documentFileFilter, MAX_FILE_SIZE };
+const UPLOAD_URL_EXPIRES_IN = 5 * 60; // seconds — long enough for a real upload, short enough a leaked URL isn't a long-lived write hole
+
+/** Same mimetype→extension resolution as `resolveExtension`, but for a client-declared mimetype/filename pair rather than a multer file object. */
+function resolveExtensionFromMime(mimeType, fallbackFilename) {
+  if (MIME_TO_EXT[mimeType]) return MIME_TO_EXT[mimeType];
+  const fromName = fallbackFilename?.split('.').pop()?.toLowerCase();
+  return fromName || 'bin';
+}
+
+/**
+ * Mints a short-lived presigned PUT URL so the browser can upload a file
+ * directly to R2, bypassing our serverless function's request body entirely
+ * (Vercel hard-caps that at ~4.5MB, which broke bulk document uploads).
+ *
+ * The key is an opaque UUID, not the docId-based
+ * "documents/{dept}/{docId}-v{version}.{ext}" scheme `addVersion` uses below
+ * — docId/versionNumber are only known *after* the Document row exists, but
+ * a presigned URL needs a fixed key decided up front. The key is never
+ * user-facing (DocumentVersion's toJSON transform strips it, only a derived
+ * public `url` is ever returned), so this is a pure internal storage detail.
+ */
+async function createPresignedUploadUrl({ filename, mimeType }) {
+  const ext = resolveExtensionFromMime(mimeType, filename);
+  const key = `documents/uploads/${randomUUID()}.${ext}`;
+  const uploadUrl = await getSignedUrl(
+    r2Client,
+    new PutObjectCommand({ Bucket: env.r2.bucketName, Key: key, ContentType: mimeType }),
+    { expiresIn: UPLOAD_URL_EXPIRES_IN }
+  );
+  return { key, uploadUrl };
+}
+
+/**
+ * Confirms a client-claimed upload actually landed in R2, and its real size
+ * matches what was declared, before we trust it enough to write a permanent
+ * DocumentVersion record — otherwise a client could hand the server an
+ * arbitrary/stale/never-uploaded key.
+ */
+async function headObjectOrThrow({ key, expectedSize }) {
+  let head;
+  try {
+    head = await r2Client.send(new HeadObjectCommand({ Bucket: env.r2.bucketName, Key: key }));
+  } catch {
+    throw new BadRequestError('The uploaded file could not be found in storage — please try uploading again.');
+  }
+  if (typeof expectedSize === 'number' && head.ContentLength !== expectedSize) {
+    throw new BadRequestError('The uploaded file size does not match what was declared.');
+  }
+  return head;
+}
+
+module.exports = {
+  upload,
+  uploadBufferToR2,
+  resolveExtension,
+  resolveExtensionFromMime,
+  createPresignedUploadUrl,
+  headObjectOrThrow,
+  documentFileFilter,
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE,
+};

@@ -408,7 +408,7 @@ async function validateRows(rawRows, context) {
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-async function commitImport({ rows, files, actorId }) {
+async function commitImport({ rows, fileRefs, actorId }) {
   const context = await buildValidationContext();
   const revalidated = await validateRows(
     rows.map((r) => ({ rowNumber: r.rowNumber, data: r.data })),
@@ -416,8 +416,8 @@ async function commitImport({ rows, files, actorId }) {
   );
 
   const fileByName = new Map();
-  for (const f of files || []) {
-    const key = fileNameKey(f.originalname);
+  for (const f of fileRefs || []) {
+    const key = fileNameKey(f.originalFilename);
     fileByName.set(key, fileByName.has(key) ? 'AMBIGUOUS' : f);
   }
 
@@ -433,13 +433,13 @@ async function commitImport({ rows, files, actorId }) {
       continue;
     }
 
-    const file = fileByName.get(fileNameKey(row.data.fileName));
-    if (!file) {
+    const fileRef = fileByName.get(fileNameKey(row.data.fileName));
+    if (!fileRef) {
       results.push({ row: row.rowNumber, status: 'failed', error: `No uploaded file named "${row.data.fileName}" was found.` });
       failed += 1;
       continue;
     }
-    if (file === 'AMBIGUOUS') {
+    if (fileRef === 'AMBIGUOUS') {
       results.push({ row: row.rowNumber, status: 'failed', error: `Multiple uploaded files are named "${row.data.fileName}".` });
       failed += 1;
       continue;
@@ -463,7 +463,7 @@ async function commitImport({ rows, files, actorId }) {
         isoStandards: row.resolved.isoStandards || [],
         isoClauses: row.data.isoClauses,
         authorId: row.resolved.authorUserId,
-        file,
+        fileRef,
         // Document Register rows: the sheet's column supplies the Document
         // Register Reference, not the SMS docId — docId is auto-generated
         // (see createDocument), same as the single-document create form.

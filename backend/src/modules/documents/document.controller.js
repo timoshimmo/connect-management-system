@@ -1,8 +1,30 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const documentService = require('./document.service');
 const { parsePagination, paginatedResponse } = require('../../common/pagination');
-const { BadRequestError, ForbiddenError } = require('../../common/errors');
+const { ForbiddenError } = require('../../common/errors');
 const { buildPublicUrl } = require('../../config/r2');
+const { createPresignedUploadUrl } = require('../../middlewares/upload');
+
+// Mints presigned R2 PUT URLs so the browser can upload file bytes directly
+// to storage, bypassing our serverless function's request-body size cap
+// entirely (Vercel hard-caps that at ~4.5MB — see createPresignedUploadUrl's
+// doc comment in middlewares/upload.js). Batch-capable: serves both the
+// single-file create/edit case and the many-file bulk-import case through
+// one endpoint.
+const getUploadUrls = asyncHandler(async (req, res) => {
+  const files = await Promise.all(
+    req.body.files.map(({ filename, mimeType }) => createPresignedUploadUrl({ filename, mimeType }))
+  );
+  res.json({
+    files: files.map((f, i) => ({
+      key: f.key,
+      uploadUrl: f.uploadUrl,
+      originalFilename: req.body.files[i].filename,
+      mimeType: req.body.files[i].mimeType,
+      size: req.body.files[i].size,
+    })),
+  });
+});
 
 const list = asyncHandler(async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query);
@@ -34,7 +56,6 @@ const create = asyncHandler(async (req, res) => {
   const doc = await documentService.createDocument({
     ...req.body,
     authorId: req.user.id,
-    file: req.file,
   });
   res.status(201).json({ document: doc });
 });
@@ -45,9 +66,8 @@ const update = asyncHandler(async (req, res) => {
 });
 
 const addVersion = asyncHandler(async (req, res) => {
-  if (!req.file) throw new BadRequestError('A file is required');
   const version = await documentService.addVersion(req.params.id, {
-    file: req.file,
+    fileRef: req.body.fileRef,
     changeNote: req.body.changeNote,
     uploadedBy: req.user.id,
   });
@@ -132,6 +152,7 @@ const preview = asyncHandler(async (req, res) => {
 module.exports = {
   list,
   getOne,
+  getUploadUrls,
   create,
   update,
   addVersion,

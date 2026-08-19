@@ -20,6 +20,58 @@ export class ApiError extends Error {
   }
 }
 
+/** A presigned R2 upload target returned by POST /documents/upload-urls. */
+export interface PresignedFile {
+  key: string;
+  uploadUrl: string;
+  originalFilename: string;
+  mimeType: string;
+  size: number;
+}
+
+/** What a file becomes, everywhere in the app, once it's been uploaded to R2 — never raw bytes again after this. */
+export interface FileRef {
+  key: string;
+  originalFilename: string;
+  size: number;
+  mimeType: string;
+}
+
+/**
+ * PUTs a File directly to a presigned R2 URL — deliberately NOT routed
+ * through apiRequest/apiUpload, since this goes to a completely different
+ * origin (Cloudflare R2, not our own API) and must never carry the app's
+ * Authorization/cookie headers. XHR (not fetch) so upload progress is
+ * observable, same reasoning as apiUploadWithProgress below.
+ */
+function putFileToR2(file: File, presigned: PresignedFile, onProgress?: (percent: number) => void): Promise<FileRef> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', presigned.uploadUrl);
+    // Must match the mimeType declared at presign time exactly — R2 binds
+    // Content-Type into the request signature, so a mismatch here fails as
+    // a signature error, not a validation error.
+    xhr.setRequestHeader('Content-Type', presigned.mimeType);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({
+          key: presigned.key,
+          originalFilename: presigned.originalFilename,
+          size: presigned.size,
+          mimeType: presigned.mimeType,
+        });
+      } else {
+        reject(new ApiError(`Upload to storage failed (${xhr.status})`, xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError('Network error uploading file', 0));
+    xhr.send(file);
+  });
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
@@ -175,6 +227,37 @@ export function createApiClient(config: ApiClientConfig) {
     });
   }
 
+  /** Requests presigned R2 PUT URLs for one or more files, via the app's own authenticated API. */
+  async function requestUploadUrls(files: { filename: string; mimeType: string; size: number }[]): Promise<PresignedFile[]> {
+    const { files: presigned } = await apiRequest<{ files: PresignedFile[] }>('/documents/upload-urls', {
+      method: 'POST',
+      body: { files },
+    });
+    return presigned;
+  }
+
+  /**
+   * Full flow for one or more files: presign, then PUT each directly to R2,
+   * resolving to FileRef[] in the same order as `files`. Sequential (not
+   * parallel) so progress reporting stays simple and predictable — the app
+   * only ever had one FormData-wide progress bar before this, so this is
+   * already strictly better even without parallelizing.
+   */
+  async function uploadFilesToR2(files: File[], onProgress?: (percent: number) => void): Promise<FileRef[]> {
+    if (files.length === 0) return [];
+    const presigned = await requestUploadUrls(files.map((f) => ({ filename: f.name, mimeType: f.type, size: f.size })));
+    const results: FileRef[] = [];
+    for (let i = 0; i < files.length; i += 1) {
+      results.push(
+        await putFileToR2(files[i], presigned[i], (pct) => {
+          if (onProgress) onProgress(Math.round(((i + pct / 100) / files.length) * 100));
+        })
+      );
+      if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+    }
+    return results;
+  }
+
   /** Fetches a binary response (e.g. a generated .xlsx) as a Blob, with the same auth header as every other call here. */
   async function apiDownload(path: string): Promise<Blob> {
     const token = config.getAccessToken();
@@ -198,7 +281,7 @@ export function createApiClient(config: ApiClientConfig) {
     return res.blob();
   }
 
-  return { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, refreshAccessToken };
+  return { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, uploadFilesToR2, refreshAccessToken };
 }
 
 /** MS Publishing's client — unchanged behavior/signature from before this was factored out. */
@@ -209,4 +292,5 @@ const msPublishingClient = createApiClient({
   authPathPrefix: '/auth/',
 });
 
-export const { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, refreshAccessToken } = msPublishingClient;
+export const { apiRequest, apiUpload, apiUploadWithProgress, apiDownload, uploadFilesToR2, refreshAccessToken } =
+  msPublishingClient;

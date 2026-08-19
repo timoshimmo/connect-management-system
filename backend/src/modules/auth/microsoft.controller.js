@@ -2,6 +2,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const microsoftService = require('./microsoft.service');
 const { setRefreshCookie } = require('./auth.controller');
 const env = require('../../config/env');
+const logger = require('../../utils/logger');
 
 const OAUTH_COOKIE_NAME = 'ms_oauth';
 const OAUTH_COOKIE_OPTIONS = {
@@ -60,6 +61,11 @@ const callback = asyncHandler(async (req, res) => {
     res.redirect(`${env.frontendUrl}/ms-publishing`);
   } catch (err) {
     clearOAuthCookie(res);
+    // handleCallback already logs the specific token-exchange/state-cookie
+    // failures itself — this catches anything else (e.g. a DB error while
+    // resolving/creating the user) that would otherwise surface only as a
+    // generic 'unknown' toast with nothing in the logs to explain it.
+    if (!err.code) logger.error({ err }, 'Microsoft SSO: unexpected error in callback');
     const code = err.code || 'unknown';
     res.redirect(`${env.frontendUrl}/login?ssoError=${encodeURIComponent(code)}`);
   }
