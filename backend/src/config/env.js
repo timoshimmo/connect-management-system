@@ -55,10 +55,7 @@ module.exports = {
     const tenantId = required('MICROSOFT_TENANT_ID', 'f6e07a26-1f87-4350-8703-9d891f3a7bf1');
     const clientId = required('MICROSOFT_CLIENT_ID', 'cded3be1-6cb3-495c-8799-5c45a15cc7e4');
     const clientSecret = required('MICROSOFT_CLIENT_SECRET', 'oc-8Q~9DXVUW6IQyB5TQRJHMisUVxKtKx.K7qb4I');
-    // Same "unconfigured = disabled, not a crash" convention as smtp/r2
-    // above (see mailer.js's getTransporter()) — Microsoft SSO is optional;
-    // leaving these blank just hides the "Sign in with Microsoft" button
-    // and 503s the SSO routes instead of failing to start.
+ 
     return {
       tenantId,
       clientId,
