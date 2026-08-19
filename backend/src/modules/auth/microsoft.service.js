@@ -7,6 +7,7 @@ const { UnauthorizedError, BadRequestError, ForbiddenError, ConflictError } = re
 const { recordAudit } = require('../auditLogs/auditLog.service');
 const { notifyUser, notifyRole } = require('../notifications/notification.service');
 const env = require('../../config/env');
+const logger = require('../../utils/logger');
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // matches auth.service.js's login()/refresh()
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes to complete the Microsoft redirect round trip
@@ -116,6 +117,7 @@ async function getAuthorizationUrl({ linkUserId } = {}) {
 async function handleCallback({ query, cookieValue }) {
   const stored = verifyState(cookieValue);
   if (!stored) {
+    logger.warn({ hasCookie: Boolean(cookieValue) }, 'Microsoft SSO: state cookie missing or invalid/expired');
     throw ssoError(UnauthorizedError, 'unknown', 'This sign-in attempt expired. Please try again.');
   }
   if (query.error) {
@@ -132,7 +134,10 @@ async function handleCallback({ query, cookieValue }) {
       nonce: stored.nonce,
       code_verifier: stored.codeVerifier,
     });
-  } catch {
+  } catch (err) {
+    // Logged (never shown to the browser) so the real Microsoft/openid-client
+    // error is visible in server logs instead of only a generic toast.
+    logger.error({ err, redirectUri: env.microsoft.redirectUri }, 'Microsoft SSO: token exchange failed');
     throw ssoError(UnauthorizedError, 'unknown', 'Microsoft sign-in could not be completed. Please try again.');
   }
 
