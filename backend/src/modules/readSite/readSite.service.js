@@ -54,7 +54,11 @@ async function listDepartmentsWithCounts(destination = 'Read Site') {
     { $match: { status: 'Published', destination } },
     { $group: { _id: '$department', count: { $sum: 1 } } },
   ]);
-  const countByDept = new Map(counts.map((c) => [c._id.toString(), c.count]));
+  // Defensive: a `null` `_id` bucket would appear if this were ever called
+  // for a destination where department is optional (see
+  // department.service.js's identical fix) — not currently reachable since
+  // every call site passes 'Read Site'/'Drawing Register', but cheap to guard.
+  const countByDept = new Map(counts.filter((c) => c._id).map((c) => [c._id.toString(), c.count]));
   return departments.map((d) => ({
     id: d._id.toString(),
     name: d.name,
