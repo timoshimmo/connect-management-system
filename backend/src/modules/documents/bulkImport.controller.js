@@ -1,6 +1,6 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const bulkImportService = require('./bulkImport.service');
-const { bulkImportCommitRowsSchema } = require('./bulkImport.validation');
+const { bulkImportCommitRowsSchema, bulkImportFileRefsSchema } = require('./bulkImport.validation');
 const { BadRequestError } = require('../../common/errors');
 
 const template = asyncHandler(async (req, res) => {
@@ -22,18 +22,21 @@ const parse = asyncHandler(async (req, res) => {
 
 const commit = asyncHandler(async (req, res) => {
   if (!req.body.rows) throw new BadRequestError('Row data is required');
-  let parsedRows;
-  try {
-    parsedRows = JSON.parse(req.body.rows);
-  } catch {
-    throw new BadRequestError('Row data is not valid JSON');
-  }
-  const result = bulkImportCommitRowsSchema.safeParse(parsedRows);
-  if (!result.success) {
-    const message = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+  const rowsResult = bulkImportCommitRowsSchema.safeParse(req.body.rows);
+  if (!rowsResult.success) {
+    const message = rowsResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new BadRequestError(message);
   }
-  const importResult = await bulkImportService.commitImport({ rows: result.data, files: req.files, actorId: req.user.id });
+  const fileRefsResult = bulkImportFileRefsSchema.safeParse(req.body.fileRefs || []);
+  if (!fileRefsResult.success) {
+    const message = fileRefsResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    throw new BadRequestError(message);
+  }
+  const importResult = await bulkImportService.commitImport({
+    rows: rowsResult.data,
+    fileRefs: fileRefsResult.data,
+    actorId: req.user.id,
+  });
   res.json(importResult);
 });
 

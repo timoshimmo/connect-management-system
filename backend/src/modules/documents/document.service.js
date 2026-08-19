@@ -8,7 +8,7 @@ const { DocumentVersion } = require('./documentVersion.model');
 const { Counter } = require('./counter.model');
 const { Department } = require('../departments/department.model');
 const { NotFoundError, BadRequestError, ConflictError, ForbiddenError } = require('../../common/errors');
-const { uploadBufferToR2, resolveExtension } = require('../../middlewares/upload');
+const { resolveExtensionFromMime, headObjectOrThrow } = require('../../middlewares/upload');
 const { recordAudit } = require('../auditLogs/auditLog.service');
 const { notifyUser, notifyRole } = require('../notifications/notification.service');
 const { User } = require('../users/user.model');
@@ -189,7 +189,7 @@ async function createDocument({
   isoStandards,
   isoClauses,
   authorId,
-  file,
+  fileRef,
   docId: explicitDocId,
   documentRegisterReference: explicitDocumentRegisterReference,
   status,
@@ -273,9 +273,9 @@ async function createDocument({
     }
   }
 
-  if (file) {
+  if (fileRef) {
     try {
-      await addVersion(doc._id, { file, changeNote: changeNote || 'Initial upload', uploadedBy: authorId, versionNumber });
+      await addVersion(doc._id, { fileRef, changeNote: changeNote || 'Initial upload', uploadedBy: authorId, versionNumber });
     } catch (err) {
       // The upload failed (e.g. R2 unreachable/misconfigured) — don't
       // leave an empty, file-less draft behind. Roll back the document so
@@ -288,31 +288,31 @@ async function createDocument({
   return getDocumentById(doc._id);
 }
 
-async function addVersion(id, { file, changeNote, uploadedBy, versionNumber: versionNumberOverride }) {
-  const doc = await Document.findById(id).populate('department', 'code');
+async function addVersion(id, { fileRef, changeNote, uploadedBy, versionNumber: versionNumberOverride }) {
+  const doc = await Document.findById(id);
   if (!doc) throw new NotFoundError('Document not found');
 
   const versionCount = await DocumentVersion.countDocuments({ document: doc._id });
   // Override lets bulk import carry over a historical document's real
   // version label (e.g. "3.2") instead of always starting at "1.0".
   const versionNumber = versionNumberOverride || `${versionCount + 1}.0`;
-  const format = resolveExtension(file);
-  // Document Register documents can have no department (organized by Type
-  // instead) — fall back to a fixed folder segment rather than crashing on
-  // `doc.department.code` when the ref is null.
-  const departmentSegment = doc.department?.code ? doc.department.code.toLowerCase() : 'qhse';
-  const key = `documents/${departmentSegment}/${doc.docId}-v${versionNumber}.${format}`;
+  const format = resolveExtensionFromMime(fileRef.mimeType, fileRef.originalFilename);
 
-  await uploadBufferToR2(file.buffer, { key, contentType: file.mimetype });
+  // The browser already PUT the bytes straight to R2 via a presigned URL
+  // (see middlewares/upload.js's createPresignedUploadUrl) — this just
+  // confirms the client-claimed key genuinely exists and its real size
+  // matches what was declared, before trusting it enough to record
+  // permanently. No uploadBufferToR2 call here: the bytes are already there.
+  await headObjectOrThrow({ key: fileRef.key, expectedSize: fileRef.size });
 
   const version = await DocumentVersion.create({
     document: doc._id,
     versionNumber,
     file: {
-      key,
-      originalFilename: file.originalname,
-      size: file.size,
-      mimeType: file.mimetype,
+      key: fileRef.key,
+      originalFilename: fileRef.originalFilename,
+      size: fileRef.size,
+      mimeType: fileRef.mimeType,
       format,
     },
     uploadedBy,

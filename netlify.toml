@@ -21,6 +21,7 @@
   external_node_modules = [
     "serverless-http",
     "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
     "bcrypt",
     "compression",
     "cookie-parser",

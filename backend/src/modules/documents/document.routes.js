@@ -5,14 +5,7 @@ const documentRegisterBulkImportController = require('./documentRegisterBulkImpo
 const { authenticate } = require('../../middlewares/auth');
 const { requireRole } = require('../../middlewares/permission');
 const { validate } = require('../../middlewares/validate');
-const { upload } = require('../../middlewares/upload');
-const {
-  excelUpload,
-  bulkFilesUpload,
-  MAX_BULK_FILES,
-  documentRegisterFilesUpload,
-  MAX_DOCUMENT_REGISTER_BULK_FILES,
-} = require('../../middlewares/bulkUpload');
+const { excelUpload } = require('../../middlewares/bulkUpload');
 const {
   createDocumentSchema,
   updateDocumentSchema,
@@ -21,6 +14,8 @@ const {
   returnSchema,
   archiveSchema,
   listQuerySchema,
+  uploadUrlRequestSchema,
+  addVersionSchema,
 } = require('./document.validation');
 
 const router = express.Router();
@@ -63,12 +58,12 @@ router.use(authenticate);
  *               pagination: { page: 1, limit: 20, total: 34, totalPages: 2 }
  *   post:
  *     tags: [Documents]
- *     summary: Create a new document draft (Author or Controller). Optionally attach the first file version.
+ *     summary: Create a new document draft (Author or Controller). Optionally attach the first file version via `fileRef` (see /documents/upload-urls).
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
  *             required: [title, department, type]
@@ -78,17 +73,45 @@ router.use(authenticate);
  *               type: { type: string, enum: [Manual, Policy, Procedure, Standard, Goal, "Org Chart", "Policy Change", "Functional Description", Form] }
  *               description: { type: string }
  *               location: { type: string, enum: [Onshore, "Offshore – Mayo ABO", Both] }
- *               file: { type: string, format: binary }
+ *               fileRef: { type: object, properties: { key: { type: string }, originalFilename: { type: string }, size: { type: integer }, mimeType: { type: string } } }
  *     responses:
  *       201: { description: Draft created }
  */
 router.get('/', validate({ query: listQuerySchema }), controller.list);
+router.post('/', requireRole('author', 'controller'), validate({ body: createDocumentSchema }), controller.create);
+
+/**
+ * @openapi
+ * /documents/upload-urls:
+ *   post:
+ *     tags: [Documents]
+ *     summary: Mint short-lived presigned R2 PUT URLs so the browser can upload file bytes directly to storage, bypassing the API's request-body size limit.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [files]
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [filename, mimeType, size]
+ *                   properties:
+ *                     filename: { type: string }
+ *                     mimeType: { type: string }
+ *                     size: { type: integer }
+ *     responses:
+ *       200: { description: 'One presigned target per requested file, in the same order: { key, uploadUrl, originalFilename, mimeType, size }' }
+ */
 router.post(
-  '/',
+  '/upload-urls',
   requireRole('author', 'controller'),
-  upload.single('file'),
-  validate({ body: createDocumentSchema }),
-  controller.create
+  validate({ body: uploadUrlRequestSchema }),
+  controller.getUploadUrls
 );
 
 /**
@@ -124,24 +147,19 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
- *             required: [rows, files]
+ *             required: [rows, fileRefs]
  *             properties:
- *               rows: { type: string, description: 'JSON-encoded array of { rowNumber, data }' }
- *               files: { type: array, items: { type: string, format: binary } }
+ *               rows: { type: array, description: 'Array of { rowNumber, data }' }
+ *               fileRefs: { type: array, description: 'Files already uploaded via /documents/upload-urls: { key, originalFilename, size, mimeType }[]' }
  *     responses:
  *       200: { description: 'Import summary: { total, succeeded, failed, skipped, results }' }
  */
 router.get('/bulk-import/template', requireRole('controller'), bulkImportController.template);
 router.post('/bulk-import/parse', requireRole('controller'), excelUpload.single('file'), bulkImportController.parse);
-router.post(
-  '/bulk-import/commit',
-  requireRole('controller'),
-  bulkFilesUpload.array('files', MAX_BULK_FILES),
-  bulkImportController.commit
-);
+router.post('/bulk-import/commit', requireRole('controller'), bulkImportController.commit);
 
 /**
  * Document Register bulk import (Document Controller only) — a dedicated
@@ -180,13 +198,13 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
- *             required: [rows, files]
+ *             required: [rows, fileRefs]
  *             properties:
- *               rows: { type: string, description: 'JSON-encoded array of { rowNumber, data }' }
- *               files: { type: array, items: { type: string, format: binary } }
+ *               rows: { type: array, description: 'Array of { rowNumber, data }' }
+ *               fileRefs: { type: array, description: 'Files already uploaded via /documents/upload-urls: { key, originalFilename, size, mimeType }[]' }
  *     responses:
  *       200: { description: 'Import summary: { total, succeeded, failed, skipped, results }' }
  */
@@ -201,12 +219,7 @@ router.post(
   excelUpload.single('file'),
   documentRegisterBulkImportController.parse
 );
-router.post(
-  '/document-register-bulk-import/commit',
-  requireRole('controller'),
-  documentRegisterFilesUpload.array('files', MAX_DOCUMENT_REGISTER_BULK_FILES),
-  documentRegisterBulkImportController.commit
-);
+router.post('/document-register-bulk-import/commit', requireRole('controller'), documentRegisterBulkImportController.commit);
 
 /**
  * @openapi
@@ -264,18 +277,23 @@ router.patch('/:id', validate({ body: updateDocumentSchema }), controller.update
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
- *             required: [file]
+ *             required: [fileRef]
  *             properties:
- *               file: { type: string, format: binary }
+ *               fileRef: { type: object, description: 'Already uploaded via /documents/upload-urls: { key, originalFilename, size, mimeType }' }
  *               changeNote: { type: string }
  *     responses:
  *       201: { description: New version created }
  */
 router.get('/:id/versions', controller.listVersions);
-router.post('/:id/versions', requireRole('author', 'controller'), upload.single('file'), controller.addVersion);
+router.post(
+  '/:id/versions',
+  requireRole('author', 'controller'),
+  validate({ body: addVersionSchema }),
+  controller.addVersion
+);
 
 /**
  * @openapi

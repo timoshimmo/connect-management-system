@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest, apiUpload, ApiError } from '@/lib/apiClient';
+import { apiRequest, uploadFilesToR2, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/features/toast';
 import type { ApiDocument, ApiDocumentDestination, ApiDocumentType, Paginated } from '@/lib/apiTypes';
 
@@ -50,7 +50,7 @@ export function useCreateDocumentMutation() {
   const invalidate = useInvalidateDocuments();
   const { showSuccess, showError } = useToast();
   return useMutation({
-    mutationFn: (payload: {
+    mutationFn: async (payload: {
       title: string;
       department: string;
       destination: ApiDocumentDestination;
@@ -70,22 +70,27 @@ export function useCreateDocumentMutation() {
       /** Document Register only — publishes immediately, skipping the draft/review workflow (backend rejects this for any other destination). */
       status?: 'Published';
     }) => {
-      const form = new FormData();
-      form.set('title', payload.title);
-      form.set('department', payload.department);
-      form.set('destination', payload.destination);
-      if (payload.type) form.set('type', payload.type);
-      if (payload.description) form.set('description', payload.description);
-      if (payload.location) form.set('location', payload.location);
-      if (payload.drawingNumber) form.set('drawingNumber', payload.drawingNumber);
-      if (payload.discipline) form.set('discipline', payload.discipline);
-      if (payload.area) form.set('area', payload.area);
-      if (payload.revision) form.set('revision', payload.revision);
-      if (payload.file) form.set('file', payload.file);
-      if (payload.isoStandards) payload.isoStandards.forEach((s) => form.append('isoStandards', s));
-      if (payload.isoClauses) form.set('isoClauses', payload.isoClauses);
-      if (payload.status) form.set('status', payload.status);
-      return apiUpload<{ document: ApiDocument }>('/documents', form).then((r) => r.document);
+      const [fileRef] = payload.file ? await uploadFilesToR2([payload.file]) : [undefined];
+      const { document } = await apiRequest<{ document: ApiDocument }>('/documents', {
+        method: 'POST',
+        body: {
+          title: payload.title,
+          department: payload.department,
+          destination: payload.destination,
+          type: payload.type,
+          description: payload.description,
+          location: payload.location,
+          drawingNumber: payload.drawingNumber,
+          discipline: payload.discipline,
+          area: payload.area,
+          revision: payload.revision,
+          fileRef,
+          isoStandards: payload.isoStandards,
+          isoClauses: payload.isoClauses,
+          status: payload.status,
+        },
+      });
+      return document;
     },
     onSuccess: (doc) => {
       invalidate();
@@ -133,23 +138,21 @@ export function useUpdateDocumentMutation() {
   const invalidate = useInvalidateDocuments();
   const { showSuccess, showError } = useToast();
   return useMutation({
-    mutationFn: ({ id, file, changeNote, ...metadata }: UpdateDocumentPayload) => {
+    mutationFn: async ({ id, file, changeNote, ...metadata }: UpdateDocumentPayload) => {
       const hasMetadata = Object.values(metadata).some((v) => v !== undefined);
-      const metadataUpdate = hasMetadata
-        ? apiRequest<{ document: ApiDocument }>(`/documents/${id}`, { method: 'PATCH', body: metadata }).then(
+      const updated = hasMetadata
+        ? await apiRequest<{ document: ApiDocument }>(`/documents/${id}`, { method: 'PATCH', body: metadata }).then(
             (r) => r.document
           )
-        : Promise.resolve(undefined);
+        : undefined;
 
-      return metadataUpdate.then((updated) => {
-        if (!file) return updated as ApiDocument;
-        const form = new FormData();
-        form.set('file', file);
-        if (changeNote) form.set('changeNote', changeNote);
-        return apiUpload<{ version: unknown }>(`/documents/${id}/versions`, form).then(() =>
-          apiRequest<{ document: ApiDocument }>(`/documents/${id}`).then((r) => r.document)
-        );
+      if (!file) return updated as ApiDocument;
+      const [fileRef] = await uploadFilesToR2([file]);
+      await apiRequest<{ version: unknown }>(`/documents/${id}/versions`, {
+        method: 'POST',
+        body: { fileRef, changeNote },
       });
+      return apiRequest<{ document: ApiDocument }>(`/documents/${id}`).then((r) => r.document);
     },
     onSuccess: (doc) => {
       invalidate();

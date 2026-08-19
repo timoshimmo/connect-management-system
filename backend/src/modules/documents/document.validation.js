@@ -6,8 +6,36 @@ const {
   DOCUMENT_DESTINATIONS,
   ISO_STANDARDS,
 } = require('./document.model');
+const { ALLOWED_MIME_TYPES, MAX_FILE_SIZE } = require('../../middlewares/upload');
+const { MAX_DOCUMENT_REGISTER_BULK_FILES } = require('../../middlewares/bulkUpload');
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
+
+/** A file already uploaded to R2 via a presigned URL (see /documents/upload-urls) — never raw bytes. */
+const fileRefSchema = z.object({
+  key: z.string().min(1),
+  originalFilename: z.string().min(1),
+  size: z.number().int().positive(),
+  mimeType: z.string().min(1),
+});
+
+const uploadUrlRequestSchema = z.object({
+  files: z
+    .array(
+      z.object({
+        filename: z.string().min(1),
+        mimeType: z.enum([...ALLOWED_MIME_TYPES]),
+        size: z.number().int().positive().max(MAX_FILE_SIZE, `Files must be ${MAX_FILE_SIZE / 1024 / 1024}MB or smaller.`),
+      })
+    )
+    .min(1)
+    .max(MAX_DOCUMENT_REGISTER_BULK_FILES, `A single request is limited to ${MAX_DOCUMENT_REGISTER_BULK_FILES} files.`),
+});
+
+const addVersionSchema = z.object({
+  fileRef: fileRefSchema,
+  changeNote: z.string().optional(),
+});
 
 /**
  * Fields shared across destinations, plus every destination-specific field
@@ -61,6 +89,9 @@ function requireDestinationFields(data, ctx) {
 const createDocumentSchema = z
   .object({
     ...documentFieldsSchema,
+    // Create-only — an update's replacement file goes through
+    // addVersionSchema/POST /:id/versions instead, never a raw field on PATCH.
+    fileRef: fileRefSchema.optional(),
     // Create-only, and deliberately restricted to just 'Published' (not the
     // full DOCUMENT_STATUSES enum) — this is exclusively how Document
     // Register documents skip the review workflow (spec: Controller
@@ -135,4 +166,7 @@ module.exports = {
   archiveSchema,
   listQuerySchema,
   objectId,
+  fileRefSchema,
+  uploadUrlRequestSchema,
+  addVersionSchema,
 };

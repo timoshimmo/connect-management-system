@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiUpload, apiUploadWithProgress, apiDownload, ApiError } from '@/lib/apiClient';
+import { apiRequest, apiUpload, apiDownload, uploadFilesToR2, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/features/toast';
 import type {
   ApiDocumentRegisterBulkImportCommitResult,
@@ -71,16 +71,13 @@ export function useCommitDocumentRegisterBulkImportMutation() {
   const [progress, setProgress] = useState(0);
 
   const mutation = useMutation({
-    mutationFn: ({ rows, files }: CommitArgs) => {
+    mutationFn: async ({ rows, files }: CommitArgs) => {
       setProgress(0);
-      const form = new FormData();
-      form.set('rows', JSON.stringify(rows.map((r) => ({ rowNumber: r.rowNumber, data: r.data }))));
-      files.forEach((file) => form.append('files', file));
-      return apiUploadWithProgress<ApiDocumentRegisterBulkImportCommitResult>(
-        '/documents/document-register-bulk-import/commit',
-        form,
-        setProgress
-      );
+      const fileRefs = await uploadFilesToR2(files, setProgress);
+      return apiRequest<ApiDocumentRegisterBulkImportCommitResult>('/documents/document-register-bulk-import/commit', {
+        method: 'POST',
+        body: { rows: rows.map((r) => ({ rowNumber: r.rowNumber, data: r.data })), fileRefs },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
