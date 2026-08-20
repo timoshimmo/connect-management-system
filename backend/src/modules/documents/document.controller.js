@@ -19,6 +19,7 @@ const getUploadUrls = asyncHandler(async (req, res) => {
     files: files.map((f, i) => ({
       key: f.key,
       uploadUrl: f.uploadUrl,
+      contentDisposition: f.contentDisposition,
       originalFilename: req.body.files[i].filename,
       mimeType: req.body.files[i].mimeType,
       size: req.body.files[i].size,

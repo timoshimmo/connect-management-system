@@ -178,7 +178,7 @@ async function resolveAndSignIn({ claims, linkUserId }) {
   if (linkUserId) {
     const conflicting = await User.findOne({ microsoftId: oid });
     if (conflicting && conflicting._id.toString() !== linkUserId) {
-      throw ssoError(ConflictError, 'link_conflict', 'This Microsoft account is already linked to a different STACconnect user.');
+      throw ssoError(ConflictError, 'link_conflict', 'This Microsoft account is already linked to a different STAC Management System user.');
     }
     user = await User.findById(linkUserId).populate('department', 'name code');
     if (!user) throw ssoError(UnauthorizedError, 'unknown', 'Your session is no longer valid. Please sign in again.');
@@ -242,7 +242,7 @@ async function resolveAndSignIn({ claims, linkUserId }) {
     await recordAudit({ user: user._id, action: 'sso_signup', targetType: 'auth', metadata: { email } });
     await notifyUser(user._id, {
       type: 'sso_account_created',
-      message: 'Your STACconnect account was created via Microsoft sign-in. A Document Controller will assign your role and department shortly.',
+      message: 'Your STAC Management System account was created via Microsoft sign-in. A Document Controller will assign your role and department shortly.',
     });
     await notifyRole('controller', {
       type: 'user_created',

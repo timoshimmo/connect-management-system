@@ -109,7 +109,7 @@ export function ArchivedDocumentsPanel({ documents, onView, onRestore }: Archive
           {doc.currentVersion && (
             <a
               href={doc.currentVersion.file.url}
-              download
+              download={doc.currentVersion.file.originalFilename}
               className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Download

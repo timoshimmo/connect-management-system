@@ -20,7 +20,7 @@ export function resolvePreviewSource(record: PreviewableRecord): PreviewSource |
     title: record.title,
     refId: record.id,
     url: record.fileUrl,
-    fileName: `${record.id}.${record.fileFormat ?? 'pdf'}`,
+    fileName: record.originalFilename || `${record.id}.${record.fileFormat ?? 'pdf'}`,
     fileType,
   };
 }

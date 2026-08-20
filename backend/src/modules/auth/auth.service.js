@@ -40,7 +40,7 @@ async function inviteUser(user) {
   const link = resetLink(rawToken);
   const text = `Hi ${user.name},
 
-An account has been created for you on STACconnect (role: ${user.role}).
+An account has been created for you on STAC Management System (role: ${user.role}).
 
 Set your password here (link expires in 7 days):
 ${link}
@@ -49,13 +49,13 @@ If you weren't expecting this, you can ignore this email.`;
 
   await sendMail({
     to: user.email,
-    subject: 'Welcome to STACconnect — set your password',
+    subject: 'Welcome to STAC Management System — set your password',
     text,
     html: renderEmail({
-      title: 'Welcome to STACconnect',
-      bodyText: `Hi ${user.name},\n\nAn account has been created for you on STACconnect (role: ${user.role}). Set your password below to get started — this link expires in 7 days.\n\nIf you weren't expecting this, you can safely ignore this email.`,
+      title: 'Welcome to STAC Management System',
+      bodyText: `Hi ${user.name},\n\nAn account has been created for you on STAC Management System (role: ${user.role}). Set your password below to get started — this link expires in 7 days.\n\nIf you weren't expecting this, you can safely ignore this email.`,
       cta: { label: 'Set Your Password', url: link },
-      preheader: 'Set your password to activate your STACconnect account.',
+      preheader: 'Set your password to activate your STAC Management System account.',
     }),
   });
 
@@ -158,16 +158,16 @@ async function forgotPassword(email) {
     const link = resetLink(rawToken);
     await sendMail({
       to: user.email,
-      subject: 'Reset your STACconnect password',
+      subject: 'Reset your STAC Management System password',
       text: `Reset your password here (expires in 1 hour):
 ${link}
 
 If you didn't request this, you can ignore this email.`,
       html: renderEmail({
         title: 'Reset Your Password',
-        bodyText: "We received a request to reset your STACconnect password. This link expires in 1 hour.\n\nIf you didn't request this, you can safely ignore this email — your password won't change.",
+        bodyText: "We received a request to reset your STAC Management System password. This link expires in 1 hour.\n\nIf you didn't request this, you can safely ignore this email — your password won't change.",
         cta: { label: 'Reset Password', url: link },
-        preheader: 'Reset your STACconnect password.',
+        preheader: 'Reset your STAC Management System password.',
       }),
     });
   }

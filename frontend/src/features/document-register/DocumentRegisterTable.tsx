@@ -60,6 +60,7 @@ export function DocumentRegisterTable({ documents, isLoading, onView }: Document
 
   const renderActions = (doc: ApiDocument) => {
     const fileUrl = doc.currentVersion?.file.url ?? null;
+    const fileName = doc.currentVersion?.file.originalFilename;
     return (
       <>
         <button
@@ -72,7 +73,7 @@ export function DocumentRegisterTable({ documents, isLoading, onView }: Document
         {fileUrl && (
           <a
             href={fileUrl}
-            download
+            download={fileName}
             className="inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             Download

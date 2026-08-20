@@ -35,7 +35,7 @@ export function DocumentDetailsModal({ doc, onClose }: DocumentDetailsModalProps
 
   function handlePreview() {
     if (!fileUrl) return;
-    openPreview({ id: doc._id, title: doc.title, fileUrl, fileFormat });
+    openPreview({ id: doc._id, title: doc.title, fileUrl, fileFormat, originalFilename: fileName });
     onClose();
   }
 
@@ -110,7 +110,7 @@ export function DocumentDetailsModal({ doc, onClose }: DocumentDetailsModalProps
             {fileUrl && (
               <a
                 href={fileUrl}
-                download
+                download={fileName ?? undefined}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-900"
               >
                 <Download className="h-3.5 w-3.5" /> Download

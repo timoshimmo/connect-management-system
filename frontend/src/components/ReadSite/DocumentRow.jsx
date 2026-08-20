@@ -52,6 +52,7 @@ export default function DocumentRow({ document }) {
               title: document.title,
               fileUrl: document.fileUrl,
               fileFormat: document.fileType,
+              originalFilename: document.originalFilename,
             })
           }
           title={document.fileUrl ? undefined : 'No file has been uploaded for this document yet'}

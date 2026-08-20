@@ -131,6 +131,7 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
                   title: doc.title,
                   fileUrl: currentVersion.file.url,
                   fileFormat: currentVersion.file.format,
+                  originalFilename: currentVersion.file.originalFilename,
                 })
               }
               className="inline-flex items-center gap-1.5 rounded-lg border border-brand-700 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -140,7 +141,7 @@ export function DocumentDetailModal({ doc, onClose, onArchive, onRestore }: Docu
             {(doc.status === 'Published' || doc.status === 'Archived') && currentVersion && (
               <a
                 href={currentVersion.file.url}
-                download
+                download={currentVersion.file.originalFilename}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
               >
                 <Download className="h-3.5 w-3.5" /> Download

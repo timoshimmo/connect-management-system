@@ -1,5 +1,6 @@
 const multer = require('multer');
 const { randomUUID } = require('crypto');
+const contentDisposition = require('content-disposition');
 const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');
@@ -79,16 +80,29 @@ function resolveExtensionFromMime(mimeType, fallbackFilename) {
  * a presigned URL needs a fixed key decided up front. The key is never
  * user-facing (DocumentVersion's toJSON transform strips it, only a derived
  * public `url` is ever returned), so this is a pure internal storage detail.
+ *
+ * Content-Disposition is bound into the object itself (not just returned to
+ * the client as metadata) so the *public* delivery URL — a different origin
+ * from the app — serves the real filename via R2's own response header.
+ * Browsers deliberately ignore an `<a download>` attribute's suggested name
+ * for cross-origin links (anti-spoofing), so without this every download
+ * would save as the opaque UUID regardless of what the frontend sets.
  */
 async function createPresignedUploadUrl({ filename, mimeType }) {
   const ext = resolveExtensionFromMime(mimeType, filename);
   const key = `documents/uploads/${randomUUID()}.${ext}`;
+  const disposition = contentDisposition.create(filename || `file.${ext}`);
   const uploadUrl = await getSignedUrl(
     r2Client,
-    new PutObjectCommand({ Bucket: env.r2.bucketName, Key: key, ContentType: mimeType }),
+    new PutObjectCommand({
+      Bucket: env.r2.bucketName,
+      Key: key,
+      ContentType: mimeType,
+      ContentDisposition: disposition,
+    }),
     { expiresIn: UPLOAD_URL_EXPIRES_IN }
   );
-  return { key, uploadUrl };
+  return { key, uploadUrl, contentDisposition: disposition };
 }
 
 /**

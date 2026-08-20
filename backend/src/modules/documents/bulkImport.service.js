@@ -121,7 +121,7 @@ async function generateTemplateWorkbook() {
   ]);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'STACconnect';
+  workbook.creator = 'STAC Management System';
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet('Documents');

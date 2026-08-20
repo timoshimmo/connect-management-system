@@ -117,7 +117,7 @@ export const SSO_ERROR_MESSAGES: Record<string, string> = {
   unauthorized_tenant: 'That Microsoft account belongs to a different organization and cannot sign in here.',
   inactive: 'This account has been deactivated. Contact your Document Controller.',
   cancelled: 'Microsoft sign-in was cancelled.',
-  link_conflict: 'That Microsoft account is already linked to a different STACconnect user.',
+  link_conflict: 'That Microsoft account is already linked to a different STAC Management System user.',
   config_error: 'Microsoft sign-in is not configured correctly. Contact your administrator.',
   unknown: 'Something went wrong signing in with Microsoft. Please try again.',
 };
