@@ -23,7 +23,13 @@ const { apiLimiter } = require('./middlewares/rateLimiter');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const { connectDatabase } = require('./config/database');
 
+// Assigned immediately (matching the same fix in routes/index.js) rather
+// than reassigned at the bottom of the file — a late module.exports
+// reassignment, after many statements already ran, was consistently
+// resolving to an empty {} for whoever required a file on Vercel
+// specifically. Every app.use() call below mutates this same object.
 const app = express();
+module.exports = app;
 
 // Both Vercel and Netlify put the app behind a reverse proxy — without this,
 // Express can't see the real client IP from X-Forwarded-For (req.ip falls
@@ -82,5 +88,3 @@ app.use('/api', safeUse('routes', routes));
 
 app.use(safeUse('notFound', notFound));
 app.use(safeUse('errorHandler', errorHandler));
-
-module.exports = app;

@@ -1,6 +1,13 @@
 const express = require('express');
 
+// Assigned immediately, before any router.use() calls run, rather than
+// reassigned at the end of the file — a late `module.exports = router`
+// (after other statements already executed) was consistently resolving to
+// an empty {} for whoever required this file on Vercel specifically, even
+// though every individual route module below loaded without error. All
+// `.use()` calls below mutate this same already-exported object in place.
 const router = express.Router();
+module.exports = router;
 
 // Each require below MUST stay a static string literal — Vercel's build
 // statically traces require('literal') calls to decide which files to
@@ -33,5 +40,3 @@ router.use('/document-register', safeUse('document-register', require('../module
 router.use('/drawing-register-auth', safeUse('drawing-register-auth', require('../modules/drawingRegisterAuth/drawingRegisterAuth.routes')));
 router.use('/drawing-register-users', safeUse('drawing-register-users', require('../modules/drawingRegisterUsers/drawingRegisterUser.routes')));
 router.use('/drawing-register', safeUse('drawing-register', require('../modules/drawingRegisterContent/drawingRegisterContent.routes')));
-
-module.exports = router;
