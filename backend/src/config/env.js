@@ -6,8 +6,8 @@ function required(name, fallback) {
 }
 
 const nodeEnv = required('NODE_ENV', 'production');
-const jwtAccessSecret = required('JWT_ACCESS_SECRET', 'dev-access-secret');
-const jwtRefreshSecret = required('JWT_REFRESH_SECRET', 'dev-refresh-secret');
+const jwtAccessSecret = required('JWT_ACCESS_SECRET', 'wtjPOXzyQIJxGmDR2lV66ZbkESAKUax5vHfF9gfams3jqH11N8CZ4dQgd0oSF-9H');
+const jwtRefreshSecret = required('JWT_REFRESH_SECRET', '3C12zdF_z_-lIX9bJLcjySg2807TqW1JUkfhfFL0o43DriiymNgR4xGSvEv29G01');
 
 // The dev fallback secrets above are fine for local work, but silently
 // accepting them in production would mean every JWT this server issues is
