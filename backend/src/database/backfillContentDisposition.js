@@ -16,7 +16,7 @@
 // Usage: node src/database/backfillContentDisposition.js
 require('dotenv').config();
 const mongoose = require('mongoose');
-const contentDisposition = require('content-disposition');
+const contentDisposition = require('../utils/contentDisposition');
 const { CopyObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const env = require('../config/env');
 const { r2Client } = require('../config/r2');

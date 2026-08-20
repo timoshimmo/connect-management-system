@@ -2,6 +2,7 @@ const express = require('express');
 const controller = require('./documentRegister.controller');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -86,5 +87,3 @@ router.get('/documents/:id/file', controller.documentFile);
  *       404: { description: Document doesn't exist, isn't published, or isn't a Document Register document }
  */
 router.get('/:id', controller.getOne);
-
-module.exports = router;

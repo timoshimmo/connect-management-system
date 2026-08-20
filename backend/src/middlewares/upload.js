@@ -1,6 +1,6 @@
 const multer = require('multer');
 const { randomUUID } = require('crypto');
-const contentDisposition = require('content-disposition');
+const contentDisposition = require('../utils/contentDisposition');
 const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');

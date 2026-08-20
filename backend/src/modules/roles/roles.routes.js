@@ -2,6 +2,7 @@ const express = require('express');
 const { ROLES } = require('../users/user.model');
 
 const router = express.Router();
+module.exports = router;
 
 const ROLE_DESCRIPTIONS = {
   author: 'Creates and submits documents/drawings for review.',
@@ -27,5 +28,3 @@ const ROLE_DESCRIPTIONS = {
 router.get('/', (req, res) => {
   res.json({ items: ROLES.map((role) => ({ role, description: ROLE_DESCRIPTIONS[role] })) });
 });
-
-module.exports = router;

@@ -10,6 +10,7 @@ const {
 } = require('./drawingRegisterUser.validation');
 
 const router = express.Router();
+module.exports = router;
 
 // Managed exclusively by MS Publishing Document Controllers — this is the
 // regular MS Publishing `authenticate` + `requireRole('controller')` guard,
@@ -95,5 +96,3 @@ router.patch(
   validate({ body: resetDrawingRegisterUserPasswordSchema }),
   controller.resetPassword
 );
-
-module.exports = router;

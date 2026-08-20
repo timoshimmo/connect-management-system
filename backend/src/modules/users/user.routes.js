@@ -6,6 +6,7 @@ const { validate } = require('../../middlewares/validate');
 const { updateRoleSchema, createUserSchema, updateUserSchema } = require('./user.validation');
 
 const router = express.Router();
+module.exports = router;
 
 router.use(authenticate);
 
@@ -121,5 +122,3 @@ router.patch('/:id', requireRole('controller'), validate({ body: updateUserSchem
  *       403: { description: Only Document Controllers can grant roles }
  */
 router.patch('/:id/role', requireRole('controller'), validate({ body: updateRoleSchema }), controller.updateRole);
-
-module.exports = router;

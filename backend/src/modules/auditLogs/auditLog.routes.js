@@ -4,6 +4,7 @@ const { authenticate } = require('../../middlewares/auth');
 const { requireRole } = require('../../middlewares/permission');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -28,5 +29,3 @@ const router = express.Router();
  *       403: { description: Document Controllers only }
  */
 router.get('/', authenticate, requireRole('controller'), controller.list);
-
-module.exports = router;

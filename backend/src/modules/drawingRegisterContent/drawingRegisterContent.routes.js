@@ -5,6 +5,7 @@ const { validate } = require('../../middlewares/validate');
 const { createContactMessageSchema } = require('../contactMessages/contactMessage.validation');
 
 const router = express.Router();
+module.exports = router;
 
 // Every route here requires a valid Drawing Register session — unlike the
 // Read Site (public, no auth), unauthenticated visitors get nothing.
@@ -77,5 +78,3 @@ router.get('/departments', controller.listDepartments);
  *             example: { id: "64f..." }
  */
 router.post('/contact', validate({ body: createContactMessageSchema }), controller.contact);
-
-module.exports = router;

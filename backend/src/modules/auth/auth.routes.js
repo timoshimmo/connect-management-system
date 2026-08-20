@@ -12,6 +12,7 @@ const {
 } = require('./auth.validation');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -182,5 +183,3 @@ router.get('/microsoft/start', authLimiter, microsoftController.start);
 router.post('/microsoft/link/start', authLimiter, authenticate, microsoftController.linkStart);
 router.get('/microsoft/callback', authLimiter, microsoftController.callback);
 router.post('/microsoft/unlink', authenticate, microsoftController.unlink);
-
-module.exports = router;

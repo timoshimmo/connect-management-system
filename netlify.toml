@@ -14,7 +14,6 @@
     "@aws-sdk/s3-request-presigner",
     "bcrypt",
     "compression",
-    "content-disposition",
     "cookie-parser",
     "cors",
     "dotenv",

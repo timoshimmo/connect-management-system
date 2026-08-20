@@ -4,6 +4,7 @@ const { validate } = require('../../middlewares/validate');
 const { createContactMessageSchema } = require('../contactMessages/contactMessage.validation');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -93,5 +94,3 @@ router.get('/stats', controller.stats);
  *             example: { id: "64f..." }
  */
 router.post('/contact', validate({ body: createContactMessageSchema }), controller.contact);
-
-module.exports = router;

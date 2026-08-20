@@ -5,6 +5,7 @@ const { validate } = require('../../middlewares/validate');
 const { createCommentSchema, listQuerySchema } = require('./comment.validation');
 
 const router = express.Router();
+module.exports = router;
 
 router.use(authenticate);
 
@@ -46,5 +47,3 @@ router.use(authenticate);
  */
 router.get('/', validate({ query: listQuerySchema }), controller.list);
 router.post('/', validate({ body: createCommentSchema }), controller.create);
-
-module.exports = router;

@@ -3,7 +3,16 @@ const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const pinoHttp = require('pino-http');
+// pino-http self-references its factory function under both `.default` and
+// `.pinoHttp` for dual CJS/ESM compatibility (confirmed locally: all three
+// forms point at the same callable). Some bundlers' CJS/ESM interop —
+// observed specifically on Vercel's build, not reproducible locally —
+// unwrap the top-level require() into a plain object instead of leaving it
+// callable, which made `pinoHttp({ logger })` below silently return an
+// object instead of a middleware function and crash `app.use()`. Resolving
+// explicitly here works under either shape.
+const pinoHttpModule = require('pino-http');
+const pinoHttp = typeof pinoHttpModule === 'function' ? pinoHttpModule : pinoHttpModule.default || pinoHttpModule.pinoHttp;
 const swaggerUi = require('swagger-ui-express');
 
 const env = require('./config/env');
@@ -14,7 +23,13 @@ const { apiLimiter } = require('./middlewares/rateLimiter');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const { connectDatabase } = require('./config/database');
 
+// Assigned immediately (matching the same fix in routes/index.js) rather
+// than reassigned at the bottom of the file — a late module.exports
+// reassignment, after many statements already ran, was consistently
+// resolving to an empty {} for whoever required a file on Vercel
+// specifically. Every app.use() call below mutates this same object.
 const app = express();
+module.exports = app;
 
 // Both Vercel and Netlify put the app behind a reverse proxy — without this,
 // Express can't see the real client IP from X-Forwarded-For (req.ip falls
@@ -33,26 +48,43 @@ app.set('trust proxy', 1);
 // same function instance.
 connectDatabase().catch((err) => logger.error({ err }, 'MongoDB connection failed'));
 
-app.use(helmet());
-app.use(
-  cors({
-    origin: env.frontendUrl,
-    credentials: true,
-  })
-);
-app.use(compression());
-app.use(cookieParser());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
-app.use('/api', apiLimiter);
+// TEMPORARY diagnostic wrapper — pinpoints exactly which middleware factory
+// isn't returning a function, instead of guessing from a compiled line
+// number in Vercel's build output that doesn't map cleanly back to source.
+// Remove once the actual cause is confirmed.
+function safeUse(name, mw) {
+  // swagger-ui-express's `.serve` is legitimately an array of middleware
+  // (Express's own app.use() flattens arrays) — check each element.
+  const bad = Array.isArray(mw) ? mw.filter((fn) => typeof fn !== 'function') : typeof mw === 'function' ? [] : [mw];
+  if (bad.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(`[safeUse] "${name}" has a non-function value — got:`, Array.isArray(mw) ? mw.map((fn) => typeof fn) : typeof mw, mw);
+    throw new Error(`Middleware "${name}" is not a function/array-of-functions (got ${Array.isArray(mw) ? 'array with a non-function element' : typeof mw})`);
+  }
+  return mw;
+}
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(safeUse('helmet', helmet()));
+app.use(
+  safeUse(
+    'cors',
+    cors({
+      origin: env.frontendUrl,
+      credentials: true,
+    })
+  )
+);
+app.use(safeUse('compression', compression()));
+app.use(safeUse('cookieParser', cookieParser()));
+app.use(safeUse('express.json', express.json()));
+app.use(safeUse('pinoHttp', pinoHttp({ logger })));
+app.use('/api', safeUse('apiLimiter', apiLimiter));
+
+app.use('/api/docs', safeUse('swaggerUi.serve', swaggerUi.serve), safeUse('swaggerUi.setup', swaggerUi.setup(swaggerSpec)));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-app.use('/api', routes);
+app.use('/api', safeUse('routes', routes));
 
-app.use(notFound);
-app.use(errorHandler);
-
-module.exports = app;
+app.use(safeUse('notFound', notFound));
+app.use(safeUse('errorHandler', errorHandler));

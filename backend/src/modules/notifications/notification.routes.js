@@ -3,6 +3,7 @@ const controller = require('./notification.controller');
 const { authenticate } = require('../../middlewares/auth');
 
 const router = express.Router();
+module.exports = router;
 
 router.use(authenticate);
 
@@ -47,5 +48,3 @@ router.patch('/:id/read', controller.markRead);
  *       200: { description: All notifications marked read }
  */
 router.patch('/read-all', controller.markAllRead);
-
-module.exports = router;
