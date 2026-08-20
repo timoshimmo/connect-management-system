@@ -2,36 +2,36 @@ const express = require('express');
 
 const router = express.Router();
 
-// TEMPORARY diagnostic: require('./routes') was resolving to an empty {}
-// on Vercel instead of throwing, meaning one of the requires below fails
-// during load and Vercel's own module loader swallows the error instead of
-// propagating it. Wrapping each require individually forces that error to
-// surface with the exact module name attached. Revert to the plain
-// router.use('/x', require('../modules/...')) list once the cause is found.
-function safeRequire(name, path) {
-  try {
-    return require(path);
-  } catch (err) {
+// Each require below MUST stay a static string literal — Vercel's build
+// statically traces require('literal') calls to decide which files to
+// include in the deployed function bundle. Passing the path through a
+// variable/function parameter (as an earlier diagnostic version of this
+// file did) is invisible to that tracer, so the traced-out modules
+// silently vanish from the deployment with a "Cannot find module" error
+// at runtime — a bug in the diagnostic itself, not the original issue.
+function safeUse(name, mod) {
+  if (typeof mod !== 'function') {
     // eslint-disable-next-line no-console
-    console.error(`[routes] failed to require "${name}" (${path}):`, err && err.stack ? err.stack : err);
-    throw new Error(`Failed to load route module "${name}" (${path}): ${err && err.message}`);
+    console.error(`[routes] "${name}" did not resolve to a router — got ${typeof mod}:`, mod);
+    throw new Error(`Route module "${name}" is not a function (got ${typeof mod})`);
   }
+  return mod;
 }
 
-router.use('/auth', safeRequire('auth', '../modules/auth/auth.routes'));
-router.use('/users', safeRequire('users', '../modules/users/user.routes'));
-router.use('/roles', safeRequire('roles', '../modules/roles/roles.routes'));
-router.use('/departments', safeRequire('departments', '../modules/departments/department.routes'));
-router.use('/disciplines', safeRequire('disciplines', '../modules/disciplines/discipline.routes'));
-router.use('/documents', safeRequire('documents', '../modules/documents/document.routes'));
-router.use('/comments', safeRequire('comments', '../modules/comments/comment.routes'));
-router.use('/notifications', safeRequire('notifications', '../modules/notifications/notification.routes'));
-router.use('/audit-logs', safeRequire('audit-logs', '../modules/auditLogs/auditLog.routes'));
-router.use('/dashboard', safeRequire('dashboard', '../modules/dashboard/dashboard.routes'));
-router.use('/read-site', safeRequire('read-site', '../modules/readSite/readSite.routes'));
-router.use('/document-register', safeRequire('document-register', '../modules/documentRegister/documentRegister.routes'));
-router.use('/drawing-register-auth', safeRequire('drawing-register-auth', '../modules/drawingRegisterAuth/drawingRegisterAuth.routes'));
-router.use('/drawing-register-users', safeRequire('drawing-register-users', '../modules/drawingRegisterUsers/drawingRegisterUser.routes'));
-router.use('/drawing-register', safeRequire('drawing-register', '../modules/drawingRegisterContent/drawingRegisterContent.routes'));
+router.use('/auth', safeUse('auth', require('../modules/auth/auth.routes')));
+router.use('/users', safeUse('users', require('../modules/users/user.routes')));
+router.use('/roles', safeUse('roles', require('../modules/roles/roles.routes')));
+router.use('/departments', safeUse('departments', require('../modules/departments/department.routes')));
+router.use('/disciplines', safeUse('disciplines', require('../modules/disciplines/discipline.routes')));
+router.use('/documents', safeUse('documents', require('../modules/documents/document.routes')));
+router.use('/comments', safeUse('comments', require('../modules/comments/comment.routes')));
+router.use('/notifications', safeUse('notifications', require('../modules/notifications/notification.routes')));
+router.use('/audit-logs', safeUse('audit-logs', require('../modules/auditLogs/auditLog.routes')));
+router.use('/dashboard', safeUse('dashboard', require('../modules/dashboard/dashboard.routes')));
+router.use('/read-site', safeUse('read-site', require('../modules/readSite/readSite.routes')));
+router.use('/document-register', safeUse('document-register', require('../modules/documentRegister/documentRegister.routes')));
+router.use('/drawing-register-auth', safeUse('drawing-register-auth', require('../modules/drawingRegisterAuth/drawingRegisterAuth.routes')));
+router.use('/drawing-register-users', safeUse('drawing-register-users', require('../modules/drawingRegisterUsers/drawingRegisterUser.routes')));
+router.use('/drawing-register', safeUse('drawing-register', require('../modules/drawingRegisterContent/drawingRegisterContent.routes')));
 
 module.exports = router;
