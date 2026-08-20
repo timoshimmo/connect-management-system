@@ -3,7 +3,16 @@ const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const pinoHttp = require('pino-http');
+// pino-http self-references its factory function under both `.default` and
+// `.pinoHttp` for dual CJS/ESM compatibility (confirmed locally: all three
+// forms point at the same callable). Some bundlers' CJS/ESM interop —
+// observed specifically on Vercel's build, not reproducible locally —
+// unwrap the top-level require() into a plain object instead of leaving it
+// callable, which made `pinoHttp({ logger })` below silently return an
+// object instead of a middleware function and crash `app.use()`. Resolving
+// explicitly here works under either shape.
+const pinoHttpModule = require('pino-http');
+const pinoHttp = typeof pinoHttpModule === 'function' ? pinoHttpModule : pinoHttpModule.default || pinoHttpModule.pinoHttp;
 const swaggerUi = require('swagger-ui-express');
 
 const env = require('./config/env');
