@@ -46,9 +46,9 @@ module.exports = {
     host: required('SMTP_HOST', 'smtp.zoho.com'),
     port: Number(required('SMTP_PORT', 465)),
     secure: required('SMTP_SECURE', 'true') === 'true',
-    user: required('SMTP_USER', 'noreply.stacacademy@stacmarine.com'),
-    pass: required('SMTP_PASS', 'gtW3A7zRkApd'),
-    fromAddress: required('SMTP_FROM', 'noreply.stacacademy@stacmarine.com'),
+    user: required('SMTP_USER', 'noreply.management-system@stacmarine.com'),
+    pass: required('SMTP_PASS', 'Hyovmv5&'),
+    fromAddress: required('SMTP_FROM', 'noreply.management-system@stacmarine.com'),
   },
 
   microsoft: (() => {
