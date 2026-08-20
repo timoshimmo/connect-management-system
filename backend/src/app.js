@@ -42,18 +42,34 @@ app.set('trust proxy', 1);
 // same function instance.
 connectDatabase().catch((err) => logger.error({ err }, 'MongoDB connection failed'));
 
-app.use(helmet());
+// TEMPORARY diagnostic wrapper — pinpoints exactly which middleware factory
+// isn't returning a function, instead of guessing from a compiled line
+// number in Vercel's build output that doesn't map cleanly back to source.
+// Remove once the actual cause is confirmed.
+function safeUse(name, mw) {
+  if (typeof mw !== 'function') {
+    // eslint-disable-next-line no-console
+    console.error(`[safeUse] "${name}" is not a function — got ${typeof mw}:`, mw);
+    throw new Error(`Middleware "${name}" is not a function (got ${typeof mw})`);
+  }
+  return mw;
+}
+
+app.use(safeUse('helmet', helmet()));
 app.use(
-  cors({
-    origin: env.frontendUrl,
-    credentials: true,
-  })
+  safeUse(
+    'cors',
+    cors({
+      origin: env.frontendUrl,
+      credentials: true,
+    })
+  )
 );
-app.use(compression());
-app.use(cookieParser());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
-app.use('/api', apiLimiter);
+app.use(safeUse('compression', compression()));
+app.use(safeUse('cookieParser', cookieParser()));
+app.use(safeUse('express.json', express.json()));
+app.use(safeUse('pinoHttp', pinoHttp({ logger })));
+app.use('/api', safeUse('apiLimiter', apiLimiter));
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
