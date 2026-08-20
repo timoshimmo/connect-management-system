@@ -23,4 +23,6 @@ export interface PreviewableRecord {
   title: string;
   fileUrl?: string | null;
   fileFormat?: string | null;
+  /** The real uploaded filename (DocumentVersion.file.originalFilename) — used for the Download action instead of falling back to the raw id. */
+  originalFilename?: string | null;
 }

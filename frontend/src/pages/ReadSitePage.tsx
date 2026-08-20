@@ -78,6 +78,7 @@ export function ReadSitePage() {
         location: doc.location,
         fileType: fileTypeFromFormat(doc.currentVersion?.file.format),
         fileUrl: doc.currentVersion?.file.url ?? null,
+        originalFilename: doc.currentVersion?.file.originalFilename ?? null,
         mongoId: doc._id,
       })),
     [publishedDocs]

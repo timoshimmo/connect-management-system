@@ -287,6 +287,7 @@ function MSPublishingContent() {
           title: doc.title,
           fileUrl: doc.currentVersion.file.url,
           fileFormat: doc.currentVersion.file.format,
+          originalFilename: doc.currentVersion.file.originalFilename,
         })
       }
     >
