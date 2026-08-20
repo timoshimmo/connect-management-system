@@ -24,6 +24,8 @@ export class ApiError extends Error {
 export interface PresignedFile {
   key: string;
   uploadUrl: string;
+  /** Bound into the presigned request's signature — must be sent verbatim on the PUT, see putFileToR2. */
+  contentDisposition: string;
   originalFilename: string;
   mimeType: string;
   size: number;
@@ -48,10 +50,13 @@ function putFileToR2(file: File, presigned: PresignedFile, onProgress?: (percent
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', presigned.uploadUrl);
-    // Must match the mimeType declared at presign time exactly — R2 binds
-    // Content-Type into the request signature, so a mismatch here fails as
-    // a signature error, not a validation error.
+    // Both headers must match what was bound into the presigned request's
+    // signature exactly, or R2 rejects the PUT with a signature-mismatch
+    // error. Content-Disposition is what makes the *public* delivery URL
+    // (a different origin from the app) serve the real filename — an
+    // `<a download>` attribute alone is ignored cross-origin by design.
     xhr.setRequestHeader('Content-Type', presigned.mimeType);
+    xhr.setRequestHeader('Content-Disposition', presigned.contentDisposition);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
