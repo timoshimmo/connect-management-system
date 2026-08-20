@@ -44,7 +44,7 @@ export function DrawingRegisterProtectedLayout({ children }: DrawingRegisterProt
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-900">
               <LayoutDashboard className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-900">STACconnect</span>
+            <span className="text-sm font-semibold text-gray-900">STAC Management System</span>
           </Link>
           <button
             type="button"

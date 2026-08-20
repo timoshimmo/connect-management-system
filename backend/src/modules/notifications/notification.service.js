@@ -30,7 +30,7 @@ const NOTIFICATION_EMAIL_SUBJECTS = {
   contact_message: 'New Message from Document Controller Contact Form',
   user_created: 'New User Created',
   drawing_register_user_created: 'New Drawing Register User',
-  sso_account_created: 'Welcome to STACconnect',
+  sso_account_created: 'Welcome to STAC Management System',
   sso_linked: 'Microsoft Account Linked',
   sso_unlinked: 'Microsoft Account Disconnected',
   account_deactivated: 'Account Deactivated',
@@ -42,14 +42,14 @@ function titleFor(type) {
 }
 
 function emailSubjectFor(type) {
-  return `STACconnect — ${titleFor(type)}`;
+  return `STAC Management System — ${titleFor(type)}`;
 }
 
 function notificationHtml(type, message) {
   return renderEmail({
     title: titleFor(type),
     bodyText: message,
-    cta: { label: 'Open STACconnect', url: env.frontendUrl },
+    cta: { label: 'Open STAC Management System', url: env.frontendUrl },
   });
 }
 

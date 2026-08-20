@@ -1,4 +1,4 @@
-# STACconnect Management System
+# STAC Management System
 
 <!-- Includes the Document Register module: dedicated bulk-upload template, Reference No.
      numbering (STAC-QHSE-[TYPE]-NNN), and full document lifecycle management. -->

@@ -41,12 +41,12 @@ async function main() {
   const info = await transport.sendMail({
     from: env.smtp.fromAddress || env.smtp.user,
     to,
-    subject: 'STACconnect SMTP test',
+    subject: 'STAC Management System SMTP test',
     text: `This is a test email confirming the Zoho SMTP configuration works.\n\nSent at: ${new Date().toISOString()}`,
     html: renderEmail({
       title: 'SMTP Test',
       bodyText: `This is a test email confirming the Zoho SMTP configuration works, styled with the new email template.\n\nSent at: ${new Date().toISOString()}`,
-      cta: { label: 'Open STACconnect', url: env.frontendUrl },
+      cta: { label: 'Open STAC Management System', url: env.frontendUrl },
       preheader: 'Zoho SMTP + new HTML template test.',
     }),
   });

@@ -68,7 +68,7 @@ function renderEmail({ title, bodyText, cta, preheader }) {
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;">
             <tr>
               <td style="background:${BRAND_DARK};padding:22px 28px;">
-                <span style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;">STACconnect</span>
+                <span style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;">STAC Management System</span>
               </td>
             </tr>
             <tr>
@@ -81,7 +81,7 @@ function renderEmail({ title, bodyText, cta, preheader }) {
             <tr>
               <td style="padding:16px 28px 26px;border-top:1px solid #e4e4e7;">
                 <p style="margin:16px 0 0;font-size:12px;color:${MUTED};">
-                  STACconnect — Management System. This is an automated message; please don't reply directly to this email.
+                  STAC Management System. This is an automated message; please don't reply directly to this email.
                 </p>
               </td>
             </tr>

@@ -100,7 +100,7 @@ function ProfileContent() {
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-card">
           <div className="border-b border-gray-100 px-6 py-4">
             <h2 className="text-sm font-bold text-gray-900">Authentication</h2>
-            <p className="mt-0.5 text-xs text-gray-500">How you sign in to STACconnect.</p>
+            <p className="mt-0.5 text-xs text-gray-500">How you sign in to STAC Management System.</p>
           </div>
 
           <div className="divide-y divide-gray-100">

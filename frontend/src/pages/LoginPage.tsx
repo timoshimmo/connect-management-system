@@ -66,9 +66,9 @@ export function LoginPage() {
           <div className="bg-brand-800 px-6 py-5">
             <div className="mb-2 flex items-center gap-2">
               <LogIn className="h-5 w-5 text-white" />
-              <span className="text-base font-bold text-white">STACconnect</span>
+              <span className="text-base font-bold text-white">STAC Management System</span>
             </div>
-            <p className="text-sm text-white/70">Management System — Sign in to continue</p>
+            <p className="text-sm text-white/70">Sign in to continue</p>
           </div>
 
           <div className="p-6">

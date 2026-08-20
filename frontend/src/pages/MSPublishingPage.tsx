@@ -239,7 +239,7 @@ function MSPublishingContent() {
         <h1 className="text-lg font-bold text-gray-900">Awaiting Role Assignment</h1>
         <p className="mt-2 text-sm text-gray-600">
           Your account has been created, but a Document Controller hasn't assigned you a role or department yet.
-          You'll be able to access STACconnect as soon as that's done.
+          You'll be able to access STAC Management System as soon as that's done.
         </p>
         <button
           type="button"

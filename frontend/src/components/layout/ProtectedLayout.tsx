@@ -23,7 +23,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-900">
               <LayoutDashboard className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-900">STACconnect</span>
+            <span className="text-sm font-semibold text-gray-900">STAC Management System</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
