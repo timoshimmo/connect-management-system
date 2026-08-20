@@ -1,11 +1,35 @@
 const express = require('express');
-const controller = require('./document.controller');
-const bulkImportController = require('./bulkImport.controller');
-const documentRegisterBulkImportController = require('./documentRegisterBulkImport.controller');
-const { authenticate } = require('../../middlewares/auth');
-const { requireRole } = require('../../middlewares/permission');
-const { validate } = require('../../middlewares/validate');
-const { excelUpload } = require('../../middlewares/bulkUpload');
+
+// TEMPORARY diagnostic: routes/index.js's router.use() calls for documents
+// onward were all silently failing to register on Vercel (404 for
+// everything from /documents through the end of the mount list, while
+// everything before it — auth/users/roles/departments/disciplines — worked
+// fine). That pattern means something in THIS file's own require chain
+// throws during load and Vercel's module loader swallows the error instead
+// of propagating it (same class of bug seen in routes/index.js earlier).
+// Wrapping each require individually (the require() call itself still uses
+// a static string literal, so Vercel's file-tracer can still see it) forces
+// the real error to surface with the specific module named.
+function safeRequire(name, loadFn) {
+  try {
+    return loadFn();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[document.routes] failed to load "${name}":`, err && err.stack ? err.stack : err);
+    throw new Error(`[document.routes] failed to load "${name}": ${err && err.message}`);
+  }
+}
+
+const controller = safeRequire('document.controller', () => require('./document.controller'));
+const bulkImportController = safeRequire('bulkImport.controller', () => require('./bulkImport.controller'));
+const documentRegisterBulkImportController = safeRequire(
+  'documentRegisterBulkImport.controller',
+  () => require('./documentRegisterBulkImport.controller')
+);
+const { authenticate } = safeRequire('middlewares/auth', () => require('../../middlewares/auth'));
+const { requireRole } = safeRequire('middlewares/permission', () => require('../../middlewares/permission'));
+const { validate } = safeRequire('middlewares/validate', () => require('../../middlewares/validate'));
+const { excelUpload } = safeRequire('middlewares/bulkUpload', () => require('../../middlewares/bulkUpload'));
 const {
   createDocumentSchema,
   updateDocumentSchema,
@@ -16,7 +40,7 @@ const {
   listQuerySchema,
   uploadUrlRequestSchema,
   addVersionSchema,
-} = require('./document.validation');
+} = safeRequire('document.validation', () => require('./document.validation'));
 
 const router = express.Router();
 module.exports = router;
