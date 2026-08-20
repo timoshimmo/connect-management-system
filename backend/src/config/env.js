@@ -27,7 +27,7 @@ if (nodeEnv === 'production') {
 module.exports = {
   nodeEnv,
   port: Number(required('PORT', 5000)),
-  frontendUrl: required('FRONTEND_URL', 'http://localhost:5173'),
+  frontendUrl: required('FRONTEND_URL', 'https://management.stacmarine.com'),
   mongodbUri: required('MONGODB_URI', 'mongodb+srv://bolajistephen72_db_user:NJZWSFwXso2ic8nM@management.u3zxlwl.mongodb.net/management_app?retryWrites=true&w=majority&appName=management'),
   jwt: {
     accessSecret: jwtAccessSecret,
