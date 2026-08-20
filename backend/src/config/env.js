@@ -5,7 +5,7 @@ function required(name, fallback) {
   return value;
 }
 
-const nodeEnv = required('NODE_ENV', 'development');
+const nodeEnv = required('NODE_ENV', 'production');
 const jwtAccessSecret = required('JWT_ACCESS_SECRET', 'dev-access-secret');
 const jwtRefreshSecret = required('JWT_REFRESH_SECRET', 'dev-refresh-secret');
 
