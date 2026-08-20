@@ -47,10 +47,13 @@ connectDatabase().catch((err) => logger.error({ err }, 'MongoDB connection faile
 // number in Vercel's build output that doesn't map cleanly back to source.
 // Remove once the actual cause is confirmed.
 function safeUse(name, mw) {
-  if (typeof mw !== 'function') {
+  // swagger-ui-express's `.serve` is legitimately an array of middleware
+  // (Express's own app.use() flattens arrays) — check each element.
+  const bad = Array.isArray(mw) ? mw.filter((fn) => typeof fn !== 'function') : typeof mw === 'function' ? [] : [mw];
+  if (bad.length > 0) {
     // eslint-disable-next-line no-console
-    console.error(`[safeUse] "${name}" is not a function — got ${typeof mw}:`, mw);
-    throw new Error(`Middleware "${name}" is not a function (got ${typeof mw})`);
+    console.error(`[safeUse] "${name}" has a non-function value — got:`, Array.isArray(mw) ? mw.map((fn) => typeof fn) : typeof mw, mw);
+    throw new Error(`Middleware "${name}" is not a function/array-of-functions (got ${Array.isArray(mw) ? 'array with a non-function element' : typeof mw})`);
   }
   return mw;
 }
@@ -71,13 +74,13 @@ app.use(safeUse('express.json', express.json()));
 app.use(safeUse('pinoHttp', pinoHttp({ logger })));
 app.use('/api', safeUse('apiLimiter', apiLimiter));
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/docs', safeUse('swaggerUi.serve', swaggerUi.serve), safeUse('swaggerUi.setup', swaggerUi.setup(swaggerSpec)));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-app.use('/api', routes);
+app.use('/api', safeUse('routes', routes));
 
-app.use(notFound);
-app.use(errorHandler);
+app.use(safeUse('notFound', notFound));
+app.use(safeUse('errorHandler', errorHandler));
 
 module.exports = app;
