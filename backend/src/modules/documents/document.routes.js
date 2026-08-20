@@ -19,6 +19,7 @@ const {
 } = require('./document.validation');
 
 const router = express.Router();
+module.exports = router;
 
 router.use(authenticate);
 
@@ -520,5 +521,3 @@ router.get('/:id/download', controller.download);
  *             example: { url: "https://pub-xxxxxxxxxxxx.r2.dev/documents/hse/HSE-2026-001-v1.0.pdf", format: "pdf" }
  */
 router.get('/:id/preview', controller.preview);
-
-module.exports = router;

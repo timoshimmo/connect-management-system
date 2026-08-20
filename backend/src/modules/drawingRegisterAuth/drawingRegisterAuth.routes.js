@@ -6,6 +6,7 @@ const { authLimiter } = require('../../middlewares/rateLimiter');
 const { loginSchema } = require('./drawingRegisterAuth.validation');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -65,5 +66,3 @@ router.post('/logout', controller.logout);
  *       401: { description: Missing/invalid access token }
  */
 router.get('/me', authenticateDrawingRegister, controller.me);
-
-module.exports = router;

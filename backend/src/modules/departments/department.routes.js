@@ -6,6 +6,7 @@ const { validate } = require('../../middlewares/validate');
 const { createDepartmentSchema, updateDepartmentSchema, listQuerySchema } = require('./department.validation');
 
 const router = express.Router();
+module.exports = router;
 
 /**
  * @openapi
@@ -79,5 +80,3 @@ router.patch(
   validate({ body: updateDepartmentSchema }),
   controller.update
 );
-
-module.exports = router;
